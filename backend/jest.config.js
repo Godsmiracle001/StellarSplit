@@ -12,7 +12,7 @@ module.exports = {
     '!**/dist/**',
   ],
   testEnvironment: 'node',
-  moduleNameMapping: {
+  moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',
   },
   setupFilesAfterEnv: ['<rootDir>/test-setup.ts'],

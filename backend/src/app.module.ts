@@ -10,6 +10,7 @@ import { StellarModule } from './stellar/stellar.module';
 import { PaymentsModule } from './payments/payments.module';
 import { CurrencyModule } from './modules/currency/currency.module';
 import { SplitsModule } from './modules/splits/splits.module';
+import { ItemsModule } from './modules/items/items.module';
 
 // Load environment variables
 dotenv.config({
@@ -45,6 +46,7 @@ dotenv.config({
     PaymentsModule,
     CurrencyModule,
     SplitsModule,
+    ItemsModule,
   ],
 })
-export class AppModule {}
+export class AppModule { }

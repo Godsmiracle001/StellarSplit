@@ -1,4 +1,5 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany } from 'typeorm';
+import { Item } from './item.entity';
 
 @Entity('splits')
 export class Split {
@@ -22,4 +23,7 @@ export class Split {
 
   @UpdateDateColumn()
   updatedAt!: Date;
+
+  @OneToMany(() => Item, (item) => item.split)
+  items?: Item[];
 }
