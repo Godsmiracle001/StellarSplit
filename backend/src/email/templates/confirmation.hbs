@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    .container { font-family: sans-serif; padding: 20px; color: #333; }
+    .header { color: #4AE28D; font-size: 24px; font-weight: bold; }
+    .content { margin-top: 20px; font-size: 16px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">Payment Received</div>
+    <div class="content">
+      <p>We've received your payment of <strong>{{amount}} XLM</strong> for <strong>{{splitDescription}}</strong>.</p>
+      <p>Transaction Hash: <code>{{txHash}}</code></p>
+      <p>Thank you!</p>
+    </div>
+  </div>
+</body>
+</html>

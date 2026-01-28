@@ -1,7 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { createWorker, Worker } from 'tesseract.js';
-import * as sharp from 'sharp';
-import { ReceiptParser, ParsedReceipt } from './parsers/receipt-parser';
+import { Injectable, Logger } from "@nestjs/common";
+import { createWorker, Worker } from "tesseract.js";
+import sharp from "sharp";
+import { ReceiptParser, ParsedReceipt } from "./parsers/receipt-parser";
 
 @Injectable()
 export class OcrService {
@@ -20,18 +20,18 @@ export class OcrService {
     }
 
     try {
-      this.logger.log('Initializing Tesseract.js worker...');
-      this.worker = await createWorker('eng', 1, {
+      this.logger.log("Initializing Tesseract.js worker...");
+      this.worker = await createWorker("eng", 1, {
         logger: (m) => {
-          if (m.status === 'recognizing text') {
+          if (m.status === "recognizing text") {
             this.logger.debug(`OCR Progress: ${Math.round(m.progress * 100)}%`);
           }
         },
       });
       this.isInitialized = true;
-      this.logger.log('Tesseract.js worker initialized successfully');
+      this.logger.log("Tesseract.js worker initialized successfully");
     } catch (error) {
-      this.logger.error('Failed to initialize Tesseract.js worker', error);
+      this.logger.error("Failed to initialize Tesseract.js worker", error);
       throw error;
     }
   }
@@ -53,20 +53,29 @@ export class OcrService {
       const ocrText = data.text;
       const ocrConfidence = data.confidence / 100; // Convert to 0-1 scale
 
-      this.logger.debug(`OCR extracted text (confidence: ${ocrConfidence.toFixed(2)})`);
+      this.logger.debug(
+        `OCR extracted text (confidence: ${ocrConfidence.toFixed(2)})`
+      );
       this.logger.debug(`OCR text preview: ${ocrText.substring(0, 200)}...`);
 
       // Parse receipt text
-      const parsedReceipt = this.receiptParser.parseReceiptText(ocrText, ocrConfidence);
+      const parsedReceipt = this.receiptParser.parseReceiptText(
+        ocrText,
+        ocrConfidence
+      );
 
       this.logger.log(
-        `Receipt parsed: ${parsedReceipt.items.length} items, total: $${parsedReceipt.total.toFixed(2)}, confidence: ${parsedReceipt.confidence.toFixed(2)}`,
+        `Receipt parsed: ${
+          parsedReceipt.items.length
+        } items, total: $${parsedReceipt.total.toFixed(
+          2
+        )}, confidence: ${parsedReceipt.confidence.toFixed(2)}`
       );
 
       return parsedReceipt;
     } catch (error) {
-      this.logger.error('Failed to scan receipt', error);
-      throw new Error(`OCR processing failed: ${error.message}`);
+      this.logger.error("Failed to scan receipt", error);
+      throw new Error(`OCR processing failed: ${error}`);
     }
   }
 
@@ -79,7 +88,9 @@ export class OcrService {
 
       // Get image metadata
       const metadata = await image.metadata();
-      this.logger.debug(`Original image: ${metadata.width}x${metadata.height}, format: ${metadata.format}`);
+      this.logger.debug(
+        `Original image: ${metadata.width}x${metadata.height}, format: ${metadata.format}`
+      );
 
       // Convert to grayscale (improves OCR accuracy)
       image = image.greyscale();
@@ -91,7 +102,7 @@ export class OcrService {
       if (metadata.width && metadata.width > 2000) {
         image = image.resize(2000, null, {
           withoutEnlargement: true,
-          fit: 'inside',
+          fit: "inside",
         });
       }
 
@@ -104,7 +115,7 @@ export class OcrService {
       this.logger.debug(`Image preprocessing completed`);
       return processedBuffer;
     } catch (error) {
-      this.logger.error('Image preprocessing failed', error);
+      this.logger.error("Image preprocessing failed", error);
       // Return original buffer if preprocessing fails
       return imageBuffer;
     }
@@ -118,7 +129,7 @@ export class OcrService {
       await this.worker.terminate();
       this.worker = null;
       this.isInitialized = false;
-      this.logger.log('Tesseract.js worker terminated');
+      this.logger.log("Tesseract.js worker terminated");
     }
   }
 }

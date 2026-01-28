@@ -18,8 +18,10 @@
     "baseUrl": "./src",
     "paths": {
       "@/*": ["./*"]
-    }
+    },
+    "types": ["jest"]
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "backend/dist"]
 }
+

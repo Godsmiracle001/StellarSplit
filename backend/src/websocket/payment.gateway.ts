@@ -44,4 +44,30 @@ export class PaymentGateway implements OnGatewayInit, OnGatewayConnection, OnGat
   emitPaymentNotification(roomId: string, data: any) {
     this.server.to(roomId).emit('payment-notification', data);
   }
+
+  // ============ Activity Feed Updates ============
+
+  // Send new activity to user
+  sendActivityUpdate(userId: string, activity: any) {
+    this.server.to(`user-${userId}`).emit('activity-new', activity);
+  }
+
+  // Send activity read status update
+  sendActivityReadUpdate(userId: string, activityIds: string[]) {
+    this.server.to(`user-${userId}`).emit('activity-read', { activityIds });
+  }
+
+  // Send mark all as read update
+  sendActivityReadAllUpdate(userId: string) {
+    this.server.to(`user-${userId}`).emit('activity-read-all', {});
+  }
+
+  @SubscribeMessage('join-user-room')
+  handleJoinUserRoom(client: Socket, payload: { userId: string }) {
+    client.join(`user-${payload.userId}`);
+    return { event: 'joined-user-room', data: { userId: payload.userId } };
+  }
 }
+
+// Export with alias for compatibility
+export { PaymentGateway as WebSocketGateway };

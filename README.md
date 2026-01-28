@@ -1,169 +1,45 @@
-# StellarSplit Backend
+# StellarSplit Monorepo
 
-NestJS backend for StellarSplit - a crypto-powered bill splitting application.
+**Split bills instantly with crypto. No awkward conversations.**
 
-## 🚀 Quick Start
+StellarSplit is a mobile-friendly web app that makes splitting bills with friends effortless. Snap a photo of your receipt, let AI do the math, and settle up instantly using Stellar's lightning-fast payments in XLM or USDC.
+
+## 📁 Repository Structure
+
+This repository is organized as a monorepo:
+
+- **[/frontend](./frontend)**: React + TypeScript + Tailwind CSS application for the user interface.
+- **[/backend](./backend)**: NestJS + PostgreSQL API server for processing splits and payments.
+
+## 🚀 Getting Started
+
+From the root directory, you can manage both projects:
 
 ### Prerequisites
 - Node.js 18+
-- PostgreSQL 12+
-- npm
+- npm 9+
+- PostgreSQL (for backend)
 
 ### Installation
-
-1. **Install dependencies:**
-   ```bash
-   npm install
-   ```
-
-2. **Configure environment variables:**
-   ```bash
-   cp .env.example .env
-   ```
-   Edit `.env` with your database credentials and configuration.
-
-3. **Build the project:**
-   ```bash
-   npm run build
-   ```
-
-4. **Start the application:**
-   ```bash
-   # Development with live reload
-   npm run dev:watch
-
-   # Or production build
-   npm run start
-   ```
-
-The API will be available at `http://localhost:3000`
-
-## 📚 API Documentation
-
-Once the application is running, visit:
-- **Swagger UI:** http://localhost:3000/api/docs
-- **OpenAPI JSON:** http://localhost:3000/api-docs
-
-## 📁 Project Structure
-
+```bash
+# Install dependencies for all workspaces
+npm install
 ```
-src/
-├── main.ts                 # Application entry point
-├── app.module.ts          # Root application module
-├── config/                # Configuration modules
-│   ├── app.config.ts      # Application configuration
-│   └── database.config.ts # Database configuration
-├── database/              # Database configuration and utilities
-│   └── typeorm.config.ts  # TypeORM configuration
-└── modules/               # Feature modules
-    └── health/            # Health check module
-        ├── health.controller.ts
-        ├── health.service.ts
-        └── health.module.ts
-```
-
-## 🔧 Configuration
-
-### Environment Variables
-
-Create a `.env` file in the backend root directory:
-
-```env
-# Server
-NODE_ENV=development
-PORT=3000
-
-# Database
-DB_HOST=localhost
-DB_PORT=5432
-DB_USERNAME=postgres
-DB_PASSWORD=postgres
-DB_NAME=stellarsplit_dev
-DB_SYNCHRONIZE=true
-DB_LOGGING=false
-
-# Swagger
-SWAGGER_PATH=/api/docs
-SWAGGER_TITLE=StellarSplit API
-SWAGGER_DESCRIPTION=API for StellarSplit - Split bills instantly with crypto
-SWAGGER_VERSION=1.0.0
-```
-
-## 🏥 Health Check Endpoint
-
-**GET** `/health`
-
-Returns the API health status:
-
-```json
-{
-  "status": "ok",
-  "timestamp": "2026-01-21T12:00:00.000Z",
-  "uptime": 123.456
-}
-```
-
-## 📦 Dependencies
-
-### Core
-- `@nestjs/core` - NestJS core framework
-- `@nestjs/common` - Common NestJS utilities
-- `reflect-metadata` - Metadata reflection API
-- `rxjs` - Reactive programming library
-
-### Database
-- `@nestjs/typeorm` - TypeORM integration for NestJS
-- `typeorm` - ORM for database management
-- `pg` - PostgreSQL driver
-
-### Configuration
-- `@nestjs/config` - Configuration management
-- `dotenv` - Environment variable loading
-
-### Validation & Transformation
-- `class-validator` - Data validation decorators
-- `class-transformer` - DTO transformation
-
-### API Documentation
-- `@nestjs/swagger` - Swagger/OpenAPI integration
 
 ### Development
-- `typescript` - TypeScript compiler
-- `ts-node` - Execute TypeScript directly
-- `nodemon` - Auto-reload on file changes
-
-## 📋 Available Scripts
-
-- `npm run build` - Build the project for production
-- `npm run start` - Run the built application
-- `npm run dev` - Run the application in development mode
-- `npm run dev:watch` - Run with auto-reload on file changes
-- `npm test` - Run tests (not yet configured)
-
-## 🗄️ Database Setup
-
-The application uses PostgreSQL with TypeORM. On first run with `DB_SYNCHRONIZE=true`, the database schema will be automatically created.
-
-### Connect to PostgreSQL
-
 ```bash
-# If running PostgreSQL locally
-psql -U postgres -d stellarsplit_dev
+# Start frontend
+npm run dev:frontend
+
+# Start backend
+npm run dev:backend
 ```
 
-## 🚦 Acceptance Criteria Status
+## 🛠 Tech Stack
 
-✅ NestJS project initialized  
-✅ TypeORM connected to PostgreSQL  
-✅ Environment variables loaded  
-✅ Health check endpoint returns 200  
-✅ Swagger API docs configured  
-✅ Backend starts without errors  
+- **Frontend**: React, TypeScript, TailwindCSS v4, Vitest
+- **Backend**: NestJS, TypeORM, PostgreSQL
+- **Blockchain**: Stellar Network
 
-## 🤝 Contributing
-
-See [CONTRIBUTING.md](../../CONTRIBUTING.md) for development guidelines.
-
-## 📝 License
-
-See [LICENSE](../../LICENSE) for licensing information.
+---
+Built for the Stellar Drips Wave Program.

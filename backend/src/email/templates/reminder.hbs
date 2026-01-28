@@ -1,0 +1,41 @@
+<html>
+  <head>
+    <style>
+      .container {
+        font-family: sans-serif;
+        padding: 20px;
+        color: #333;
+      }
+      .header {
+        color: #e24a4a;
+        font-size: 24px;
+        font-weight: bold;
+      }
+      .content {
+        margin-top: 20px;
+        font-size: 16px;
+      }
+      .button {
+        background: #e24a4a;
+        color: white;
+        padding: 10px 20px;
+        text-decoration: none;
+        border-radius: 5px;
+        display: inline-block;
+        margin-top: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">Payment Reminder</div>
+      <div class="content">
+        <p>Hello {{participantName}},</p>
+        <p>This is a reminder to settle your share for
+          <strong>{{splitDescription}}</strong>.</p>
+        <p>Amount Due: <strong>{{amountDue}} XLM</strong>.</p>
+        <a href="{{paymentLink}}" class="button">Pay Now</a>
+      </div>
+    </div>
+  </body>
+</html>

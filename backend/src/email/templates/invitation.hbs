@@ -1,0 +1,42 @@
+<html>
+  <head>
+    <style>
+      .container {
+        font-family: sans-serif;
+        padding: 20px;
+        color: #333;
+      }
+      .header {
+        color: #4a90e2;
+        font-size: 24px;
+        font-weight: bold;
+      }
+      .content {
+        margin-top: 20px;
+        font-size: 16px;
+      }
+      .button {
+        background: #4a90e2;
+        color: white;
+        padding: 10px 20px;
+        text-decoration: none;
+        border-radius: 5px;
+        display: inline-block;
+        margin-top: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">New Split Invitation</div>
+      <div class="content">
+        <p>Hello,</p>
+        <p><strong>{{inviterName}}</strong>
+          has invited you to join a new split:
+          <strong>{{splitDescription}}</strong>.</p>
+        <p>Your share is: <strong>{{amount}} XLM</strong>.</p>
+        <a href="{{joinLink}}" class="button">Join Split</a>
+      </div>
+    </div>
+  </body>
+</html>

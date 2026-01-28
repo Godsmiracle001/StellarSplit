@@ -4,12 +4,12 @@ import {
   BadRequestException,
   NotFoundException,
   ConflictException,
-} from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, LessThanOrEqual, IsNull } from 'typeorm';
-import { RecurringSplit, RecurrenceFrequency } from './recurring-split.entity';
-import { Split } from '../entities/split.entity';
-import { Participant } from '../entities/participant.entity';
+} from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository, LessThanOrEqual, IsNull } from "typeorm";
+import { RecurringSplit, RecurrenceFrequency } from "./recurring-split.entity";
+import { Split } from "../entities/split.entity";
+import { Participant } from "../entities/participant.entity";
 
 export interface CreateRecurringSplitDto {
   creatorId: string;
@@ -44,14 +44,14 @@ export class RecurringSplitsService {
     @InjectRepository(Split)
     private splitRepository: Repository<Split>,
     @InjectRepository(Participant)
-    private participantRepository: Repository<Participant>,
+    private participantRepository: Repository<Participant>
   ) {}
 
   /**
    * Create a new recurring split
    */
   async createRecurringSplit(
-    dto: CreateRecurringSplitDto,
+    dto: CreateRecurringSplitDto
   ): Promise<RecurringSplit> {
     this.logger.log(`Creating recurring split for creator: ${dto.creatorId}`);
 
@@ -62,16 +62,19 @@ export class RecurringSplitsService {
 
     if (!templateSplit) {
       throw new NotFoundException(
-        `Template split ${dto.templateSplitId} not found`,
+        `Template split ${dto.templateSplitId} not found`
       );
     }
 
     // Calculate next occurrence
-    const nextOccurrence = this.calculateNextOccurrence(new Date(), dto.frequency);
+    const nextOccurrence = this.calculateNextOccurrence(
+      new Date(),
+      dto.frequency
+    );
 
     // Validate end date if provided
     if (dto.endDate && dto.endDate <= new Date()) {
-      throw new BadRequestException('End date must be in the future');
+      throw new BadRequestException("End date must be in the future");
     }
 
     const recurringSplit = new RecurringSplit();
@@ -93,11 +96,13 @@ export class RecurringSplitsService {
   /**
    * Get all recurring splits for a creator
    */
-  async getRecurringSplitsByCreator(creatorId: string): Promise<RecurringSplit[]> {
+  async getRecurringSplitsByCreator(
+    creatorId: string
+  ): Promise<RecurringSplit[]> {
     return this.recurringSplitRepository.find({
       where: { creatorId },
-      relations: ['templateSplit'],
-      order: { createdAt: 'DESC' },
+      relations: ["templateSplit"],
+      order: { createdAt: "DESC" },
     });
   }
 
@@ -107,7 +112,7 @@ export class RecurringSplitsService {
   async getRecurringSplitById(id: string): Promise<RecurringSplit> {
     const recurringSplit = await this.recurringSplitRepository.findOne({
       where: { id },
-      relations: ['templateSplit'],
+      relations: ["templateSplit"],
     });
 
     if (!recurringSplit) {
@@ -122,7 +127,7 @@ export class RecurringSplitsService {
    */
   async updateRecurringSplit(
     id: string,
-    dto: UpdateRecurringSplitDto,
+    dto: UpdateRecurringSplitDto
   ): Promise<RecurringSplit> {
     this.logger.log(`Updating recurring split: ${id}`);
 
@@ -130,7 +135,7 @@ export class RecurringSplitsService {
 
     // Validate end date if provided
     if (dto.endDate && dto.endDate <= new Date()) {
-      throw new BadRequestException('End date must be in the future');
+      throw new BadRequestException("End date must be in the future");
     }
 
     Object.assign(recurringSplit, dto);
@@ -173,7 +178,7 @@ export class RecurringSplitsService {
     recurringSplit.isActive = true;
     recurringSplit.nextOccurrence = this.calculateNextOccurrence(
       new Date(),
-      recurringSplit.frequency,
+      recurringSplit.frequency
     );
 
     const updated = await this.recurringSplitRepository.save(recurringSplit);
@@ -197,10 +202,10 @@ export class RecurringSplitsService {
    */
   async updateTemplate(
     recurringSplitId: string,
-    dto: UpdateTemplateDto,
+    dto: UpdateTemplateDto
   ): Promise<Split> {
     this.logger.log(
-      `Updating template for recurring split: ${recurringSplitId}`,
+      `Updating template for recurring split: ${recurringSplitId}`
     );
 
     const recurringSplit = await this.getRecurringSplitById(recurringSplitId);
@@ -209,7 +214,7 @@ export class RecurringSplitsService {
     });
 
     if (!templateSplit) {
-      throw new NotFoundException('Template split not found');
+      throw new NotFoundException("Template split not found");
     }
 
     // Update only future fields
@@ -221,7 +226,9 @@ export class RecurringSplitsService {
     }
 
     const updated = await this.splitRepository.save(templateSplit);
-    this.logger.log(`Template updated for recurring split: ${recurringSplitId}`);
+    this.logger.log(
+      `Template updated for recurring split: ${recurringSplitId}`
+    );
     return updated;
   }
 
@@ -229,14 +236,16 @@ export class RecurringSplitsService {
    * Generate a new split from a recurring split template
    * Called by the scheduler
    */
-  async generateSplitFromTemplate(recurringSplitId: string): Promise<Split> {
+  async generateSplitFromTemplate(
+    recurringSplitId: string
+  ): Promise<Split | null> {
     this.logger.log(`Generating split from template: ${recurringSplitId}`);
 
     const recurringSplit = await this.getRecurringSplitById(recurringSplitId);
 
     if (!recurringSplit.isActive) {
       this.logger.warn(
-        `Recurring split ${recurringSplitId} is not active, skipping generation`,
+        `Recurring split ${recurringSplitId} is not active, skipping generation`
       );
       return null;
     }
@@ -244,7 +253,7 @@ export class RecurringSplitsService {
     // Check if end date has passed
     if (recurringSplit.endDate && recurringSplit.endDate <= new Date()) {
       this.logger.log(
-        `Recurring split ${recurringSplitId} has ended, deactivating`,
+        `Recurring split ${recurringSplitId} has ended, deactivating`
       );
       recurringSplit.isActive = false;
       await this.recurringSplitRepository.save(recurringSplit);
@@ -254,20 +263,21 @@ export class RecurringSplitsService {
     // Get the template split
     const templateSplit = await this.splitRepository.findOne({
       where: { id: recurringSplit.templateSplitId },
-      relations: ['participants'],
+      relations: ["participants"],
     });
 
     if (!templateSplit) {
-      throw new NotFoundException('Template split not found');
+      throw new NotFoundException("Template split not found");
     }
 
     // Create new split from template
     const newSplit = new Split();
     newSplit.totalAmount = templateSplit.totalAmount;
     newSplit.amountPaid = 0;
-    newSplit.status = 'active';
-    newSplit.description =
-      `${recurringSplit.description || templateSplit.description} (${new Date().toLocaleDateString()})`;
+    newSplit.status = "active";
+    newSplit.description = `${
+      recurringSplit.description || templateSplit.description
+    } (${new Date().toLocaleDateString()})`;
 
     const savedSplit = await this.splitRepository.save(newSplit);
 
@@ -279,7 +289,7 @@ export class RecurringSplitsService {
         newParticipant.walletAddress = p.walletAddress;
         newParticipant.amountOwed = p.amountOwed;
         newParticipant.amountPaid = 0;
-        newParticipant.status = 'pending';
+        newParticipant.status = "pending";
         return newParticipant;
       });
 
@@ -289,13 +299,13 @@ export class RecurringSplitsService {
     // Update next occurrence
     recurringSplit.nextOccurrence = this.calculateNextOccurrence(
       recurringSplit.nextOccurrence,
-      recurringSplit.frequency,
+      recurringSplit.frequency
     );
 
     await this.recurringSplitRepository.save(recurringSplit);
 
     this.logger.log(
-      `Split generated from template: ${savedSplit.id} for recurring split ${recurringSplitId}`,
+      `Split generated from template: ${savedSplit.id} for recurring split ${recurringSplitId}`
     );
     return savedSplit;
   }
@@ -311,7 +321,7 @@ export class RecurringSplitsService {
         endDate: IsNull() || LessThanOrEqual(now),
         nextOccurrence: LessThanOrEqual(now),
       },
-      relations: ['templateSplit'],
+      relations: ["templateSplit"],
     });
   }
 
@@ -324,7 +334,7 @@ export class RecurringSplitsService {
     const now = new Date();
     const allActive = await this.recurringSplitRepository.find({
       where: { isActive: true, autoRemind: true },
-      relations: ['templateSplit'],
+      relations: ["templateSplit"],
     });
 
     // Filter for ones due for reminders
@@ -353,7 +363,7 @@ export class RecurringSplitsService {
    */
   private calculateNextOccurrence(
     baseDate: Date,
-    frequency: RecurrenceFrequency,
+    frequency: RecurrenceFrequency
   ): Date {
     const next = new Date(baseDate);
 
@@ -394,8 +404,7 @@ export class RecurringSplitsService {
           nextOccurrence: s.nextOccurrence,
         }))
         .sort(
-          (a, b) =>
-            a.nextOccurrence.getTime() - b.nextOccurrence.getTime(),
+          (a, b) => a.nextOccurrence.getTime() - b.nextOccurrence.getTime()
         ),
     };
   }

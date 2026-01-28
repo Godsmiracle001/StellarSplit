@@ -1,7 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common';
-import { Cron, CronExpression } from '@nestjs/schedule';
-import { RecurringSplitsService } from './recurring-splits.service';
-import { PaymentGateway } from '../websocket/payment.gateway';
+import { Injectable, Logger } from "@nestjs/common";
+import { Cron, CronExpression } from "@nestjs/schedule";
+import { RecurringSplitsService } from "./recurring-splits.service";
+import { PaymentGateway } from "../websocket/payment.gateway";
 
 @Injectable()
 export class RecurringSplitsScheduler {
@@ -9,7 +9,7 @@ export class RecurringSplitsScheduler {
 
   constructor(
     private readonly recurringSplitsService: RecurringSplitsService,
-    private readonly paymentGateway: PaymentGateway,
+    private readonly paymentGateway: PaymentGateway
   ) {}
 
   /**
@@ -18,7 +18,7 @@ export class RecurringSplitsScheduler {
    */
   @Cron(CronExpression.EVERY_6_HOURS)
   async processRecurringSplits(): Promise<void> {
-    this.logger.log('Starting recurring splits processing...');
+    this.logger.log("Starting recurring splits processing...");
 
     try {
       // Get all recurring splits that are due for processing
@@ -26,12 +26,12 @@ export class RecurringSplitsScheduler {
         await this.recurringSplitsService.getRecurringSplitsDueForProcessing();
 
       if (dueRecurringSplits.length === 0) {
-        this.logger.log('No recurring splits due for processing');
+        this.logger.log("No recurring splits due for processing");
         return;
       }
 
       this.logger.log(
-        `Found ${dueRecurringSplits.length} recurring splits due for processing`,
+        `Found ${dueRecurringSplits.length} recurring splits due for processing`
       );
 
       // Process each recurring split
@@ -39,17 +39,17 @@ export class RecurringSplitsScheduler {
         try {
           const generatedSplit =
             await this.recurringSplitsService.generateSplitFromTemplate(
-              recurringSplit.id,
+              recurringSplit.id
             );
 
           if (generatedSplit) {
             this.logger.log(
-              `Successfully generated split ${generatedSplit.id} from recurring split ${recurringSplit.id}`,
+              `Successfully generated split ${generatedSplit.id} from recurring split ${recurringSplit.id}`
             );
 
             // Emit event to notify users via WebSocket
             this.paymentGateway.emitSplitCompletion(recurringSplit.creatorId, {
-              type: 'split_generated',
+              type: "split_generated",
               recurringSplitId: recurringSplit.id,
               generatedSplitId: generatedSplit.id,
               totalAmount: generatedSplit.totalAmount,
@@ -59,18 +59,15 @@ export class RecurringSplitsScheduler {
           }
         } catch (error) {
           this.logger.error(
-            `Failed to process recurring split ${recurringSplit.id}: ${error.message}`,
-            error.stack,
+            `Failed to process recurring split ${recurringSplit.id}: ${error}`,
+            error
           );
         }
       }
 
-      this.logger.log('Recurring splits processing completed');
+      this.logger.log("Recurring splits processing completed");
     } catch (error) {
-      this.logger.error(
-        `Error in processRecurringSplits: ${error.message}`,
-        error.stack,
-      );
+      this.logger.error(`Error in processRecurringSplits: ${error}`, error);
     }
   }
 
@@ -78,9 +75,9 @@ export class RecurringSplitsScheduler {
    * Cron job to send reminders for upcoming recurring splits
    * Runs twice daily at 9 AM and 5 PM
    */
-  @Cron('0 9,17 * * *') // 9 AM and 5 PM UTC
+  @Cron("0 9,17 * * *") // 9 AM and 5 PM UTC
   async sendRecurringSplitReminders(): Promise<void> {
-    this.logger.log('Starting recurring splits reminder check...');
+    this.logger.log("Starting recurring splits reminder check...");
 
     try {
       // Get all recurring splits due for reminders
@@ -88,50 +85,50 @@ export class RecurringSplitsScheduler {
         await this.recurringSplitsService.getRecurringSplitsDueForReminders();
 
       if (dueForReminders.length === 0) {
-        this.logger.log('No reminders due');
+        this.logger.log("No reminders due");
         return;
       }
 
       this.logger.log(
-        `Found ${dueForReminders.length} recurring splits due for reminders`,
+        `Found ${dueForReminders.length} recurring splits due for reminders`
       );
 
       // Send reminders for each
       for (const recurringSplit of dueForReminders) {
         try {
           this.logger.log(
-            `Sending reminder for recurring split ${recurringSplit.id}`,
+            `Sending reminder for recurring split ${recurringSplit.id}`
           );
 
           // Emit notification via WebSocket
           this.paymentGateway.emitPaymentNotification(
             recurringSplit.creatorId,
             {
-              type: 'recurring_split_reminder',
+              type: "recurring_split_reminder",
               recurringSplitId: recurringSplit.id,
               nextOccurrence: recurringSplit.nextOccurrence,
               daysUntilDue: recurringSplit.reminderDaysBefore,
               amount: recurringSplit.templateSplit?.totalAmount,
               description: recurringSplit.description,
               timestamp: new Date().toISOString(),
-            },
+            }
           );
 
           // TODO: Send email reminder if email service is integrated
           // await this.emailService.sendRecurringSplitReminder(recurringSplit);
         } catch (error) {
           this.logger.error(
-            `Failed to send reminder for recurring split ${recurringSplit.id}: ${error.message}`,
-            error.stack,
+            `Failed to send reminder for recurring split ${recurringSplit.id}: ${error}`,
+            error
           );
         }
       }
 
-      this.logger.log('Reminder check completed');
+      this.logger.log("Reminder check completed");
     } catch (error) {
       this.logger.error(
-        `Error in sendRecurringSplitReminders: ${error.message}`,
-        error.stack,
+        `Error in sendRecurringSplitReminders: ${error}`,
+        error
       );
     }
   }
@@ -140,13 +137,14 @@ export class RecurringSplitsScheduler {
    * Cron job to cleanup and deactivate expired recurring splits
    * Runs once daily at 2 AM
    */
-  @Cron('0 2 * * *') // 2 AM UTC
+  @Cron("0 2 * * *") // 2 AM UTC
   async cleanupExpiredRecurringSplits(): Promise<void> {
-    this.logger.log('Starting expired recurring splits cleanup...');
+    this.logger.log("Starting expired recurring splits cleanup...");
 
     try {
       // Get all active recurring splits
-      const allActive = await this.recurringSplitsService.getRecurringSplitsByCreator('');
+      const allActive =
+        await this.recurringSplitsService.getRecurringSplitsByCreator("");
 
       const now = new Date();
       let deactivatedCount = 0;
@@ -159,32 +157,34 @@ export class RecurringSplitsScheduler {
           recurringSplit.endDate <= now
         ) {
           await this.recurringSplitsService.pauseRecurringSplit(
-            recurringSplit.id,
+            recurringSplit.id
           );
           deactivatedCount++;
 
           this.logger.log(
-            `Deactivated expired recurring split ${recurringSplit.id}`,
+            `Deactivated expired recurring split ${recurringSplit.id}`
           );
 
           // Notify creator
           this.paymentGateway.emitPaymentNotification(
             recurringSplit.creatorId,
             {
-              type: 'recurring_split_expired',
+              type: "recurring_split_expired",
               recurringSplitId: recurringSplit.id,
               description: recurringSplit.description,
               timestamp: new Date().toISOString(),
-            },
+            }
           );
         }
       }
 
-      this.logger.log(`Cleanup completed. Deactivated ${deactivatedCount} recurring splits`);
+      this.logger.log(
+        `Cleanup completed. Deactivated ${deactivatedCount} recurring splits`
+      );
     } catch (error) {
       this.logger.error(
-        `Error in cleanupExpiredRecurringSplits: ${error.message}`,
-        error.stack,
+        `Error in cleanupExpiredRecurringSplits: ${error}`,
+        error
       );
     }
   }
@@ -197,20 +197,20 @@ export class RecurringSplitsScheduler {
     try {
       const generatedSplit =
         await this.recurringSplitsService.generateSplitFromTemplate(
-          recurringSplitId,
+          recurringSplitId
         );
 
       if (generatedSplit) {
         this.logger.log(`Successfully generated split: ${generatedSplit.id}`);
       } else {
         this.logger.warn(
-          `No split generated for recurring split: ${recurringSplitId}`,
+          `No split generated for recurring split: ${recurringSplitId}`
         );
       }
     } catch (error) {
       this.logger.error(
-        `Error manually processing recurring split: ${error.message}`,
-        error.stack,
+        `Error manually processing recurring split: ${error}`,
+        error
       );
       throw error;
     }

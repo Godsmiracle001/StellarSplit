@@ -1,21 +1,29 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany } from 'typeorm';
-import { Item } from './item.entity';
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  CreateDateColumn,
+  UpdateDateColumn,
+  OneToMany,
+} from "typeorm";
+import { Item } from "./item.entity";
+import { Participant } from "./participant.entity";
 
-@Entity('splits')
+@Entity("splits")
 export class Split {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryGeneratedColumn("uuid")
   id!: string;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2 })
+  @Column({ type: "decimal", precision: 10, scale: 2 })
   totalAmount!: number;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
+  @Column({ type: "decimal", precision: 10, scale: 2, default: 0 })
   amountPaid!: number;
 
-  @Column({ type: 'varchar', default: 'active' })
-  status!: 'active' | 'completed' | 'partial';
+  @Column({ type: "varchar", default: "active" })
+  status!: "active" | "completed" | "partial";
 
-  @Column({ type: 'text', nullable: true })
+  @Column({ type: "text", nullable: true })
   description?: string;
 
   @CreateDateColumn()
@@ -26,4 +34,7 @@ export class Split {
 
   @OneToMany(() => Item, (item) => item.split)
   items?: Item[];
+
+  @OneToMany(() => Participant, (participant) => participant.split)
+  participants!: Participant[];
 }

@@ -41,4 +41,10 @@ const pwaOptions: Partial<VitePWAOptions> = {
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), VitePWA(pwaOptions), tailwindcss()],
+  // @ts-ignore
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    setupFiles: './src/test/setup.ts',
+  },
 });
