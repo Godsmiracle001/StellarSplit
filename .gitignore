@@ -65,6 +65,7 @@ Thumbs.db
 # ========================
 contracts/target/
 contracts/**/target/
+contracts/**/test_snapshots/
 **/*.rs.bk
 *.wasm
 contracts/.contract-id-*
