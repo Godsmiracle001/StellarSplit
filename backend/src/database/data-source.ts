@@ -14,7 +14,10 @@ export const AppDataSource = new DataSource({
     password: process.env.DB_PASSWORD || 'postgres',
     database: process.env.DB_NAME || 'stellarsplit_dev',
     entities: [path.join(__dirname, '../entities/*.entity{.ts,.js}')],
-    migrations: [path.join(__dirname, '../database/migrations/*{.ts,.js}')],
+    migrations: [
+        path.join(__dirname, 'migrations/*{.ts,.js}'),
+        path.join(__dirname, '../migrations/*{.ts,.js}'),
+    ],
     synchronize: false, // Should be false for migrations
     logging: true,
 });
