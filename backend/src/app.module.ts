@@ -1,4 +1,3 @@
-
 import { Module } from "@nestjs/common";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 import { TypeOrmModule } from "@nestjs/typeorm";
@@ -14,12 +13,12 @@ import { CurrencyModule } from "./modules/currency/currency.module";
 import { SplitsModule } from "./modules/splits/splits.module";
 import { ItemsModule } from "./modules/items/items.module";
 import { EmailModule } from "./email/email.module";
-import { RecurringSplitsModule } from './recurring-splits/recurring-splits.module';
-import { ReceiptsModule } from './receipts/receipts.module';
-import { SplitHistoryModule } from './split-history/split-history.module';
-import { ActivitiesModule } from './modules/activities/activities.module';
-import { SearchModule } from './search/search.module';
-
+import { RecurringSplitsModule } from "./recurring-splits/recurring-splits.module";
+import { ReceiptsModule } from "./receipts/receipts.module";
+import { SplitHistoryModule } from "./split-history/split-history.module";
+import { ActivitiesModule } from "./modules/activities/activities.module";
+import { SearchModule } from "./search/search.module";
+import { AnalyticsModule } from "./analytics/analytics.module";
 // Load environment variables
 dotenv.config({
   path: path.resolve(__dirname, "../.env"),
@@ -70,6 +69,8 @@ dotenv.config({
     SplitHistoryModule,
     ActivitiesModule,
     SearchModule,
+    // Analytics module for user spending & reports
+    AnalyticsModule,
   ],
 })
-export class AppModule { }
+export class AppModule {}

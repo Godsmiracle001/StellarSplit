@@ -10,6 +10,7 @@ import { Participant } from "../entities/participant.entity";
 import { Split } from "../entities/split.entity";
 import { EmailModule } from "../email/email.module";
 import { MultiCurrencyModule } from "../multi-currency/multi-currency.module";
+import { AnalyticsModule } from "../analytics/analytics.module";
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { MultiCurrencyModule } from "../multi-currency/multi-currency.module";
     StellarModule,
     EmailModule,
     MultiCurrencyModule,
+    AnalyticsModule,
   ],
   controllers: [PaymentsController],
   providers: [PaymentsService, PaymentProcessorService, PaymentGateway],

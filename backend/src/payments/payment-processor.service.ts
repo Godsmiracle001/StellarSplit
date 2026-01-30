@@ -28,8 +28,8 @@ export class PaymentProcessorService {
     @InjectRepository(Split) private splitRepository: Repository<Split>,
     private readonly emailService: EmailService,
     private readonly multiCurrencyService: MultiCurrencyService,
+    private readonly analyticsService?: import("../analytics/analytics.service").AnalyticsService,
   ) {}
-
   /**
    * Process a payment submission
    * @param splitId ID of the split
@@ -88,13 +88,15 @@ export class PaymentProcessorService {
       }
 
       // Determine the paid asset (from path payment source or regular payment)
-      const paidAsset = verificationResult.isPathPayment && verificationResult.sourceAsset
-        ? verificationResult.sourceAsset
-        : verificationResult.asset;
+      const paidAsset =
+        verificationResult.isPathPayment && verificationResult.sourceAsset
+          ? verificationResult.sourceAsset
+          : verificationResult.asset;
 
-      const paidAmount = verificationResult.isPathPayment && verificationResult.sourceAmount
-        ? verificationResult.sourceAmount
-        : verificationResult.amount;
+      const paidAmount =
+        verificationResult.isPathPayment && verificationResult.sourceAmount
+          ? verificationResult.sourceAmount
+          : verificationResult.amount;
 
       // Process multi-currency payment if needed
       let receivedAmount = verificationResult.amount;
@@ -104,15 +106,16 @@ export class PaymentProcessorService {
       // Check if conversion is needed (paid asset differs from received asset)
       if (verificationResult.isPathPayment || paidAsset !== receivedAsset) {
         try {
-          multiCurrencyResult = await this.multiCurrencyService.processMultiCurrencyPayment({
-            splitId,
-            participantId,
-            txHash,
-            paidAsset,
-            paidAmount,
-            receivedAsset: (split as any).preferredCurrency || receivedAsset,
-            slippageTolerance: 0.01, // 1% slippage tolerance
-          });
+          multiCurrencyResult =
+            await this.multiCurrencyService.processMultiCurrencyPayment({
+              splitId,
+              participantId,
+              txHash,
+              paidAsset,
+              paidAmount,
+              receivedAsset: (split as any).preferredCurrency || receivedAsset,
+              slippageTolerance: 0.01, // 1% slippage tolerance
+            });
 
           receivedAmount = multiCurrencyResult.receivedAmount;
           receivedAsset = multiCurrencyResult.receivedAsset;
@@ -153,7 +156,7 @@ export class PaymentProcessorService {
 
         return {
           success: true,
-          message: `Partial payment received. Amount: ${paidAmount} ${paidAsset}${multiCurrencyResult?.requiresConversion ? ` (converted to ${receivedAmount} ${receivedAsset})` : ''}. Expected: ${participant.amountOwed}`,
+          message: `Partial payment received. Amount: ${paidAmount} ${paidAsset}${multiCurrencyResult?.requiresConversion ? ` (converted to ${receivedAmount} ${receivedAsset})` : ""}. Expected: ${participant.amountOwed}`,
           paymentId,
         };
       } else if (receivedAmount > participant.amountOwed) {
@@ -184,7 +187,7 @@ export class PaymentProcessorService {
 
         return {
           success: true,
-          message: `Payment received with overpayment. Amount: ${paidAmount} ${paidAsset}${multiCurrencyResult?.requiresConversion ? ` (converted to ${receivedAmount} ${receivedAsset})` : ''}. Expected: ${participant.amountOwed}`,
+          message: `Payment received with overpayment. Amount: ${paidAmount} ${paidAsset}${multiCurrencyResult?.requiresConversion ? ` (converted to ${receivedAmount} ${receivedAsset})` : ""}. Expected: ${participant.amountOwed}`,
           paymentId,
         };
       } else {
@@ -215,7 +218,7 @@ export class PaymentProcessorService {
 
         return {
           success: true,
-          message: `Payment confirmed. Amount: ${paidAmount} ${paidAsset}${multiCurrencyResult?.requiresConversion ? ` (converted to ${receivedAmount} ${receivedAsset})` : ''}`,
+          message: `Payment confirmed. Amount: ${paidAmount} ${paidAsset}${multiCurrencyResult?.requiresConversion ? ` (converted to ${receivedAmount} ${receivedAsset})` : ""}`,
           paymentId,
         };
       }
@@ -256,6 +259,20 @@ export class PaymentProcessorService {
       amount: verificationResult.amount,
       expected: participant.amountOwed,
     });
+
+    // Invalidate analytics cache for this user and optionally refresh materialized views
+    try {
+      if (this.analyticsService) {
+        await this.analyticsService.invalidateUserCache(participant.userId);
+        // best-effort async refresh
+        this.analyticsService.refreshMaterializedViewsNow();
+      }
+    } catch (err) {
+      this.logger.warn(
+        "Failed to notify analytics service about partial payment",
+        err,
+      );
+    }
   }
 
   /**
@@ -292,6 +309,20 @@ export class PaymentProcessorService {
       splitId,
       txHash,
     });
+
+    // Invalidate analytics cache for this user and optionally refresh materialized views
+    try {
+      if (this.analyticsService) {
+        await this.analyticsService.invalidateUserCache(participant.userId);
+        // best-effort async refresh
+        this.analyticsService.refreshMaterializedViewsNow();
+      }
+    } catch (err) {
+      this.logger.warn(
+        "Failed to notify analytics service about payment confirmation",
+        err,
+      );
+    }
   }
 
   /**
