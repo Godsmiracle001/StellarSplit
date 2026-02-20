@@ -1,1 +1,163 @@
 @import "tailwindcss";
+
+/* ============================================================
+   TAILWIND V4 THEME CONFIGURATION
+   In v4, theme customization lives here in CSS, not tailwind.config.js
+   ============================================================ */
+
+@theme {
+  /* ── Drips-wave / Stellar-wave color palette ── */
+  --color-primary: #6c63ff;
+  --color-primary-dark: #8b85ff;
+
+  --color-surface-light: #ffffff;
+  --color-surface-dark: #0f1117;
+
+  --color-background-light: #f4f4f8;
+  --color-background-dark: #1a1d27;
+
+  --color-card-light: #ffffff;
+  --color-card-dark: #252836;
+
+  --color-text-light: #1a1a2e;
+  --color-text-dark: #e8e8f0;
+
+  --color-muted-light: #6b7280;
+  --color-muted-dark: #9ca3af;
+
+  --color-border-light: #e5e7eb;
+  --color-border-dark: #374151;
+
+  /* ── Transition duration token ── */
+  --transition-duration-theme: 300ms;
+}
+
+/* ============================================================
+   CSS CUSTOM PROPERTIES — resolved at runtime per theme
+   These are what your components actually consume via var()
+   ============================================================ */
+
+:root {
+  --color-bg: var(--color-background-light);
+  --color-surface: var(--color-surface-light);
+  --color-card: var(--color-card-light);
+  --color-text: var(--color-text-light);
+  --color-text-muted: var(--color-muted-light);
+  --color-border: var(--color-border-light);
+  --color-accent: var(--color-primary);
+  --color-ring: rgba(108, 99, 255, 0.4);
+}
+
+:root.dark {
+  --color-bg: var(--color-background-dark);
+  --color-surface: var(--color-surface-dark);
+  --color-card: var(--color-card-dark);
+  --color-text: var(--color-text-dark);
+  --color-text-muted: var(--color-muted-dark);
+  --color-border: var(--color-border-dark);
+  --color-accent: var(--color-primary-dark);
+  --color-ring: rgba(139, 133, 255, 0.4);
+}
+
+/* ============================================================
+   SMOOTH THEME TRANSITION
+   Applied globally so every element transitions on theme switch.
+   The :not([data-no-transition]) escape hatch lets you opt out
+   on elements where the transition would look wrong (e.g. canvas).
+   ============================================================ */
+
+*:not([data-no-transition]),
+*:not([data-no-transition])::before,
+*:not([data-no-transition])::after {
+  transition-property:
+    background-color, border-color, color, fill, stroke, box-shadow;
+  transition-duration: var(--transition-duration-theme);
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ============================================================
+   SEMANTIC UTILITY CLASSES
+   Use these in your components instead of hardcoded Tailwind colors.
+   They automatically flip between light/dark via CSS variables above.
+   ============================================================ */
+
+/* Backgrounds */
+.bg-theme {
+  background-color: var(--color-bg);
+}
+.bg-surface {
+  background-color: var(--color-surface);
+}
+.bg-card-theme {
+  background-color: var(--color-card);
+}
+
+/* Text */
+.text-theme {
+  color: var(--color-text);
+}
+.text-muted-theme {
+  color: var(--color-text-muted);
+}
+
+/* Borders */
+.border-theme {
+  border-color: var(--color-border);
+}
+
+/* Accent / primary */
+.bg-accent {
+  background-color: var(--color-accent);
+}
+.text-accent {
+  color: var(--color-accent);
+}
+.border-accent {
+  border-color: var(--color-accent);
+}
+
+/* Focus rings */
+.ring-theme {
+  --tw-ring-color: var(--color-ring);
+}
+
+/* ============================================================
+   BASE ELEMENT DEFAULTS
+   Sets sensible defaults on html/body so you don't need to
+   add bg-theme / text-theme to every page wrapper manually.
+   ============================================================ */
+
+html {
+  color-scheme: light;
+}
+
+html.dark {
+  color-scheme: dark; /* tells browser to dark-theme native UI (scrollbars, inputs, etc.) */
+}
+
+body {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+}
+
+/* ============================================================
+   SCROLLBAR THEMING (Webkit)
+   ============================================================ */
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-muted);
+}
