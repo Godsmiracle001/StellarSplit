@@ -15,6 +15,7 @@
     "@stellar/freighter-api": "^6.0.1",
     "@stellar/stellar-sdk": "^14.4.3",
     "axios": "^1.13.2",
+    "lucide": "^0.575.0",
     "html-to-image": "^1.11.13",
     "lucide-react": "^0.562.0",
     "react": "^19.2.0",
