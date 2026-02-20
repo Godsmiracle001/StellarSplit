@@ -5,6 +5,7 @@ import "./index.css";
 import HomePage from "./pages/Home";
 import RootLayout from "./layouts/RootLayout";
 import { WalletProvider } from "./hooks/use-wallet";
+import { ThemeProvider } from "./components/ThemeContex";
 
 const router = createBrowserRouter([
   {
@@ -25,8 +26,10 @@ const router = createBrowserRouter([
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <WalletProvider>
-      <RouterProvider router={router} />
-    </WalletProvider>
-  </StrictMode>
+    <ThemeProvider>
+      <WalletProvider>
+        <RouterProvider router={router} />
+      </WalletProvider>
+    </ThemeProvider>
+  </StrictMode>,
 );
