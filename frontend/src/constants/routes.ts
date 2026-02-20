@@ -7,4 +7,8 @@ export const ROUTES = [
     to: "/dashboard",
     label: "Dashboard",
   },
+  {
+    to: "/analytics",
+    label: "Analytics",
+  },
 ];
