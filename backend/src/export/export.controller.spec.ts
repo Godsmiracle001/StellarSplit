@@ -12,10 +12,12 @@ describe("ExportController", () => {
         {
           provide: ExportService,
           useValue: {
-            createExportJob: jest.fn(),
-            getExportJob: jest.fn(),
-            listExportJobs: jest.fn(),
+            createExport: jest.fn(),
+            getExportStatus: jest.fn(),
+            listExports: jest.fn(),
             downloadExport: jest.fn(),
+            retryExport: jest.fn(),
+            cancelExport: jest.fn(),
           },
         },
       ],

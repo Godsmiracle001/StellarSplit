@@ -18,7 +18,7 @@ import {
   ApiQuery,
   ApiParam,
 } from "@nestjs/swagger";
-import { Response } from "express-serve-static-core";
+import type { Response as ExpressResponse } from "express-serve-static-core";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { ExportService } from "./export.service";
 import {
@@ -102,17 +102,21 @@ export class ExportController {
   async downloadExport(
     @Request() req: AuthRequest,
     @Param("id") id: string,
-    // Import Response from 'express', not the global DOM Response, so
-    // setHeader() and redirect() are available
-    @Res() res: Response,
+    @Res() res: ExpressResponse,
   ): Promise<void> {
-    const { url, fileName } = await this.exportService.downloadExport(
+    const { download, fileName } = await this.exportService.downloadExport(
       id,
       req.user.id,
     );
 
     res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
-    res.redirect(url);
+    if (download.type === "redirect") {
+      res.redirect(download.url);
+      return;
+    }
+
+    res.setHeader("Content-Type", download.contentType);
+    res.sendFile(download.path);
   }
 
   @Get("list")
@@ -154,6 +158,30 @@ export class ExportController {
     @Query("limit") limit = 20,
   ) {
     return this.exportService.listExports(req.user.id, page, limit);
+  }
+
+  @Post(":id/retry")
+  @ApiOperation({
+    summary: "Retry a failed export",
+    description: "Re-queue an export that failed, expired, or was cancelled",
+  })
+  async retryExport(
+    @Request() req: AuthRequest,
+    @Param("id") id: string,
+  ): Promise<ExportJob> {
+    return this.exportService.retryExport(id, req.user.id);
+  }
+
+  @Post(":id/cancel")
+  @ApiOperation({
+    summary: "Cancel an export",
+    description: "Cancel an export that is still queued or processing",
+  })
+  async cancelExport(
+    @Request() req: AuthRequest,
+    @Param("id") id: string,
+  ): Promise<ExportJob> {
+    return this.exportService.cancelExport(id, req.user.id);
   }
 
   @Post("templates")

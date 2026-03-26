@@ -26,9 +26,10 @@ export class EmailService {
   async sendExportEmail(
     to: string,
     fileName: string,
-    fileUrl: string,
+    downloadUrl: string,
     format: ExportFormat,
     reportType: ReportType,
+    expiresAt: Date,
   ): Promise<void> {
     const formatNames: Record<ExportFormat, string> = {
       [ExportFormat.CSV]: "CSV",
@@ -81,8 +82,8 @@ export class EmailService {
                 <dt>Generated At:</dt><dd>${new Date().toLocaleString()}</dd>
             </dl>
         </div>
-        <p><a href="${fileUrl}" class="button">Download Export</a></p>
-        <p><strong>Important:</strong> This download link will expire in 7 days.</p>
+        <p><a href="${downloadUrl}" class="button">Open Export</a></p>
+        <p><strong>Important:</strong> This export will expire on ${expiresAt.toLocaleString()}.</p>
         <p>If you did not request this export, please contact our support team.</p>
         <div class="footer">
             <p>Best regards,<br>The StellarSplit Team</p>
@@ -100,9 +101,9 @@ File Format: ${formatNames[format]}
 File Name: ${fileName}
 Generated At: ${new Date().toLocaleString()}
 
-Download: ${fileUrl}
+Open export: ${downloadUrl}
 
-This link expires in 7 days.
+This export expires at ${expiresAt.toLocaleString()}.
 
 Best regards,
 The StellarSplit Team
@@ -138,6 +139,7 @@ support@stellarsplit.com`;
         fileUrl,
         ExportFormat.PDF,
         ReportType.MONTHLY_SUMMARY,
+        new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       );
     }
   }

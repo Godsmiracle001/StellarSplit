@@ -5,6 +5,14 @@ import * as fs from "fs";
 import * as path from "path";
 import { v4 as uuidv4 } from "uuid";
 
+export type ExportDownloadDescriptor =
+  | { type: "redirect"; url: string }
+  | {
+      type: "file";
+      path: string;
+      contentType: string;
+    };
+
 @Injectable()
 export class StorageService {
   private readonly logger = new Logger(StorageService.name);
@@ -48,7 +56,7 @@ export class StorageService {
   async uploadFile(
     buffer: Buffer,
     fileName: string,
-    userId: string,
+  userId: string,
   ): Promise<{ url: string; key: string }> {
     const fileKey = `exports/${userId}/${uuidv4()}/${fileName}`;
     return this.useS3
@@ -69,6 +77,30 @@ export class StorageService {
     return `${baseUrl}/storage/exports/${key}`;
   }
 
+  async getDownloadDescriptor(
+    key: string,
+    expiresIn = 3600,
+  ): Promise<ExportDownloadDescriptor> {
+    if (this.useS3) {
+      return {
+        type: "redirect",
+        url: await this.getSignedUrl(key, expiresIn),
+      };
+    }
+
+    const filePath = this.resolveLocalFilePath(key);
+
+    if (!fs.existsSync(filePath)) {
+      throw new Error(`Local export file not found for key ${key}`);
+    }
+
+    return {
+      type: "file",
+      path: filePath,
+      contentType: this.getContentType(key),
+    };
+  }
+
   async deleteFile(key: string): Promise<void> {
     if (this.useS3) {
       try {
@@ -80,7 +112,7 @@ export class StorageService {
         this.logger.error(`Failed to delete file from S3: ${key}`, error);
       }
     } else {
-      const filePath = path.join(this.localStoragePath, key);
+      const filePath = this.resolveLocalFilePath(key);
       if (fs.existsSync(filePath)) {
         try {
           fs.unlinkSync(filePath);
@@ -128,7 +160,7 @@ export class StorageService {
     buffer: Buffer,
     key: string,
   ): Promise<{ url: string; key: string }> {
-    const filePath = path.join(this.localStoragePath, key);
+    const filePath = this.resolveLocalFilePath(key);
     const dirPath = path.dirname(filePath);
 
     if (!fs.existsSync(dirPath)) fs.mkdirSync(dirPath, { recursive: true });
@@ -136,7 +168,7 @@ export class StorageService {
 
     const baseUrl =
       this.configService.get<string>("APP_URL") ?? "http://localhost:3000";
-    return { url: `${baseUrl}/storage/exports/${key}`, key: filePath };
+    return { url: `${baseUrl}/storage/exports/${key}`, key };
   }
 
   private async cleanupS3Files(cutoffDate: Date): Promise<void> {
@@ -207,5 +239,17 @@ export class StorageService {
       txt: "text/plain",
     };
     return map[ext] ?? "application/octet-stream";
+  }
+
+  private resolveLocalFilePath(key: string): string {
+    const normalizedKey = key.replace(/\\/g, "/");
+    const resolvedPath = path.resolve(this.localStoragePath, normalizedKey);
+    const storageRoot = path.resolve(this.localStoragePath);
+
+    if (!resolvedPath.startsWith(storageRoot)) {
+      throw new Error(`Unsafe export file key: ${key}`);
+    }
+
+    return resolvedPath;
   }
 }

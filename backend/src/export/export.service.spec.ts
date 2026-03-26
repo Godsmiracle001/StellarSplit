@@ -1,4 +1,5 @@
 import { Test, TestingModule } from "@nestjs/testing";
+import { getQueueToken } from "@nestjs/bull";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import { ExportService } from "./export.service";
 import { ConfigService } from "@nestjs/config";
@@ -19,12 +20,22 @@ describe("ExportService", () => {
       providers: [
         ExportService,
         {
+          provide: getQueueToken("export"),
+          useValue: {
+            add: jest.fn(),
+            getJob: jest.fn(),
+          },
+        },
+        {
           provide: getRepositoryToken(ExportJob),
           useValue: {
             find: jest.fn(),
             save: jest.fn(),
             findOne: jest.fn(),
             create: jest.fn(),
+            findAndCount: jest.fn(),
+            update: jest.fn(),
+            count: jest.fn(),
           },
         },
         {
