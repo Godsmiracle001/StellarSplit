@@ -1,33 +1,41 @@
 import {
-  Controller,
-  Post,
-  Get,
-  Patch,
-  Delete,
-  Body,
-  Param,
-  Logger,
-  ValidationPipe,
   BadRequestException,
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Logger,
+  Param,
+  Patch,
+  Post,
+  UseGuards,
+  ValidationPipe,
 } from "@nestjs/common";
-import { ApiTags, ApiOperation, ApiResponse } from "@nestjs/swagger";
+import { ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
 import {
-  RecurringSplitsService,
+  Permissions,
+  RequirePermissions,
+} from "../auth/decorators/permissions.decorator";
+import { AuthorizationGuard } from "../auth/guards/authorization.guard";
+import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
+import { RecurringSplit } from "./recurring-split.entity";
+import { RecurringSplitsScheduler } from "./recurring-splits.scheduler";
+import {
   CreateRecurringSplitDto,
+  RecurringSplitsService,
   UpdateRecurringSplitDto,
   UpdateTemplateDto,
 } from "./recurring-splits.service";
-import { RecurringSplit, RecurrenceFrequency } from "./recurring-split.entity";
-import { RecurringSplitsScheduler } from "./recurring-splits.scheduler";
 
 @ApiTags("Recurring Splits")
 @Controller("recurring-splits")
+@UseGuards(JwtAuthGuard, AuthorizationGuard)
 export class RecurringSplitsController {
   private readonly logger = new Logger(RecurringSplitsController.name);
 
   constructor(
     private readonly recurringSplitsService: RecurringSplitsService,
-    private readonly scheduler: RecurringSplitsScheduler
+    private readonly scheduler: RecurringSplitsScheduler,
   ) {}
 
   /**
@@ -43,8 +51,9 @@ export class RecurringSplitsController {
     description: "Recurring split created",
     type: RecurringSplit,
   })
+  @RequirePermissions(Permissions.CAN_CREATE_SPLIT)
   async createRecurringSplit(
-    @Body(ValidationPipe) dto: CreateRecurringSplitDto
+    @Body(ValidationPipe) dto: CreateRecurringSplitDto,
   ): Promise<RecurringSplit> {
     this.logger.log(`Creating recurring split for creator: ${dto.creatorId}`);
     return this.recurringSplitsService.createRecurringSplit(dto);
@@ -63,8 +72,9 @@ export class RecurringSplitsController {
     description: "Recurring splits retrieved",
     type: [RecurringSplit],
   })
+  @RequirePermissions(Permissions.CAN_LIST_SPLITS)
   async getRecurringSplitsByCreator(
-    @Param("creatorId") creatorId: string
+    @Param("creatorId") creatorId: string,
   ): Promise<RecurringSplit[]> {
     this.logger.log(`Getting recurring splits for creator: ${creatorId}`);
     return this.recurringSplitsService.getRecurringSplitsByCreator(creatorId);
@@ -82,6 +92,7 @@ export class RecurringSplitsController {
     status: 200,
     description: "Statistics retrieved",
   })
+  @RequirePermissions(Permissions.CAN_LIST_SPLITS)
   async getStats(@Param("creatorId") creatorId: string): Promise<{
     total: number;
     active: number;
@@ -109,8 +120,9 @@ export class RecurringSplitsController {
     status: 404,
     description: "Recurring split not found",
   })
+  @RequirePermissions(Permissions.CAN_READ_SPLIT)
   async getRecurringSplitById(
-    @Param("id") id: string
+    @Param("id") id: string,
   ): Promise<RecurringSplit> {
     this.logger.log(`Getting recurring split: ${id}`);
     return this.recurringSplitsService.getRecurringSplitById(id);
@@ -130,9 +142,10 @@ export class RecurringSplitsController {
     description: "Recurring split updated",
     type: RecurringSplit,
   })
+  @RequirePermissions(Permissions.CAN_UPDATE_SPLIT)
   async updateRecurringSplit(
     @Param("id") id: string,
-    @Body(ValidationPipe) dto: UpdateRecurringSplitDto
+    @Body(ValidationPipe) dto: UpdateRecurringSplitDto,
   ): Promise<RecurringSplit> {
     this.logger.log(`Updating recurring split: ${id}`);
     return this.recurringSplitsService.updateRecurringSplit(id, dto);
@@ -152,6 +165,7 @@ export class RecurringSplitsController {
     description: "Recurring split paused",
     type: RecurringSplit,
   })
+  @RequirePermissions(Permissions.CAN_UPDATE_SPLIT)
   async pauseRecurringSplit(@Param("id") id: string): Promise<RecurringSplit> {
     this.logger.log(`Pausing recurring split: ${id}`);
     return this.recurringSplitsService.pauseRecurringSplit(id);
@@ -171,6 +185,7 @@ export class RecurringSplitsController {
     description: "Recurring split resumed",
     type: RecurringSplit,
   })
+  @RequirePermissions(Permissions.CAN_UPDATE_SPLIT)
   async resumeRecurringSplit(@Param("id") id: string): Promise<RecurringSplit> {
     this.logger.log(`Resuming recurring split: ${id}`);
     return this.recurringSplitsService.resumeRecurringSplit(id);
@@ -189,6 +204,7 @@ export class RecurringSplitsController {
     status: 204,
     description: "Recurring split deleted",
   })
+  @RequirePermissions(Permissions.CAN_DELETE_SPLIT)
   async deleteRecurringSplit(@Param("id") id: string): Promise<void> {
     this.logger.log(`Deleting recurring split: ${id}`);
     return this.recurringSplitsService.deleteRecurringSplit(id);
@@ -207,9 +223,10 @@ export class RecurringSplitsController {
     status: 200,
     description: "Template updated",
   })
+  @RequirePermissions(Permissions.CAN_UPDATE_SPLIT)
   async updateTemplate(
     @Param("id") id: string,
-    @Body(ValidationPipe) dto: UpdateTemplateDto
+    @Body(ValidationPipe) dto: UpdateTemplateDto,
   ) {
     this.logger.log(`Updating template for recurring split: ${id}`);
     return this.recurringSplitsService.updateTemplate(id, dto);
@@ -228,6 +245,7 @@ export class RecurringSplitsController {
     status: 200,
     description: "Split processed",
   })
+  @RequirePermissions(Permissions.CAN_UPDATE_SPLIT)
   async processNow(@Param("id") id: string): Promise<{ message: string }> {
     this.logger.log(`Manually processing recurring split: ${id}`);
     try {
@@ -235,7 +253,7 @@ export class RecurringSplitsController {
       return { message: "Recurring split processed successfully" };
     } catch (error) {
       throw new BadRequestException(
-        `Failed to process recurring split: ${error}`
+        `Failed to process recurring split: ${error}`,
       );
     }
   }

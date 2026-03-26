@@ -4,11 +4,17 @@
 
 use soroban_sdk::{Address, Env, String, Symbol};
 
-/// Emit an event when a template is created.
-pub fn emit_template_created(env: &Env, template_id: String, creator: Address, name: String) {
+/// Emit an event when a template is created (includes schema version).
+pub fn emit_template_created(
+    env: &Env,
+    template_id: String,
+    creator: Address,
+    name: String,
+    version: u32,
+) {
     env.events().publish(
         (Symbol::new(env, "template_created"), template_id),
-        (creator, name),
+        (creator, name, version),
     );
 }
 

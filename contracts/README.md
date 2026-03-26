@@ -6,44 +6,56 @@ This directory contains the Soroban smart contracts for the StellarSplit escrow 
 
 The StellarSplit contracts handle on-chain escrow for bill splitting, enabling trustless payments between participants.
 
+## Workspace
+
+All healthy contracts are managed as a Cargo workspace from `contracts/Cargo.toml`.
+Run workspace-wide commands from the `contracts/` directory:
+
+```bash
+cd contracts
+cargo test --workspace        # run all tests
+cargo fmt --all -- --check    # check formatting
+cargo build --workspace --target wasm32-unknown-unknown --release  # build all WASMs
+```
+
+Or use the CI script:
+
+```bash
+bash scripts/ci-contracts.sh all    # fmt + test + build for all supported contracts
+bash scripts/ci-contracts.sh fmt    # formatting only
+bash scripts/ci-contracts.sh test   # tests only
+bash scripts/ci-contracts.sh build  # WASM build only
+```
+
+## Contract Status
+
+| Contract | Status | Tests | Notes |
+|----------|--------|-------|-------|
+| achievement-badges | Production | Yes | NFT achievement badges |
+| flash-loan | Production | Yes | Flash loan protocol |
+| path-payment | Production | Yes | Automatic currency conversion via Stellar path payments |
+| split-template | Production | Yes | Reusable split templates with versioning |
+| staking | Production | Yes | Staking, governance delegation, and reward distribution |
+| dispute-resolution | Broken | - | Many compilation errors; mid-port to pinned Soroban toolchain |
+| split-escrow | Broken | - | Many compilation errors; draft/broken source |
+| multi-sig-splits | Broken | - | E0507 move error; needs ownership fix |
+
 ## Project Structure
 
 ```
 contracts/
-├── achievement-badges/     # NFT achievement badges
-│   ├── src/
-│   │   ├── lib.rs          # Badge minting contract
-│   │   ├── types.rs        # Badge types and metadata
-│   │   ├── storage.rs      # Badge storage helpers
-│   │   ├── events.rs       # Badge events
-│   │   └── test.rs         # Badge tests
-│   ├── Cargo.toml          # Rust dependencies
-│   └── README.md           # Badge contract docs
-├── multi-sig-splits/       # Multi-signature with time-locks
-│   ├── src/
-│   │   ├── lib.rs          # Multi-sig contract
-│   │   ├── types.rs        # Multi-sig types
-│   │   ├── storage.rs      # Multi-sig storage
-│   │   ├── events.rs       # Multi-sig events
-│   │   └── test.rs         # Multi-sig tests
-│   ├── Cargo.toml          # Rust dependencies
-│   └── README.md           # Multi-sig contract docs
-├── split-escrow/           # Main escrow contract
-│   ├── src/
-│   │   ├── lib.rs          # Contract entry point
-│   │   ├── types.rs        # Custom data types
-│   │   ├── storage.rs      # Storage helpers
-│   │   ├── events.rs       # Contract events
-│   │   └── test.rs         # Unit tests
-│   ├── Cargo.toml          # Rust dependencies
-│   └── README.md           # Contract documentation
+├── Cargo.toml                 # Workspace root (soroban-sdk centralized)
+├── achievement-badges/        # NFT achievement badges
+├── flash-loan/                # Flash loan protocol
+├── path-payment/              # Path payment currency conversion
+├── split-template/            # Reusable split templates (versioned)
+├── staking/                   # Staking, governance & rewards
+├── dispute-resolution/        # (excluded - broken)
+├── split-escrow/              # (excluded - broken)
+├── multi-sig-splits/          # (excluded - broken)
 ├── scripts/
-│   ├── build.sh                    # Build split-escrow contract
-│   ├── build-achievement-badges.sh # Build achievement badges contract
-│   ├── build-multi-sig-splits.sh   # Build multi-sig splits contract
-│   ├── deploy.sh                   # Deploy to network
-│   └── test.sh                     # Run unit tests
-└── README.md                       # This file
+│   └── ci-contracts.sh        # CI: fmt, test, build for supported contracts
+└── README.md                  # This file
 ```
 
 ## Prerequisites
@@ -74,29 +86,27 @@ cargo install soroban-cli
 ```bash
 cd contracts
 
-# Build main escrow contract
-./scripts/build.sh
+# Build all workspace contracts to WASM
+cargo build --workspace --target wasm32-unknown-unknown --release
 
-# Build achievement badges contract
-./scripts/build-achievement-badges.sh
-
-# Build multi-signature contract
-./scripts/build-multi-sig-splits.sh
+# Or use the CI script
+bash scripts/ci-contracts.sh build
 ```
-
-Each script compiles the respective contract to WebAssembly and optionally optimizes it.
 
 ### Run Tests
 
 ```bash
-./scripts/test.sh
-```
+cd contracts
 
-Run specific tests:
+# Run all workspace tests
+cargo test --workspace
 
-```bash
-./scripts/test.sh create_split
-./scripts/test.sh --verbose
+# Run tests for a specific contract
+cargo test -p staking-governance
+cargo test -p split-template
+
+# Or use the CI script
+bash scripts/ci-contracts.sh test
 ```
 
 ### Deploy to Testnet

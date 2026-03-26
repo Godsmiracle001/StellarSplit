@@ -31,8 +31,22 @@ pub struct MultisigSplit {
     pub executed_at: u64,
     /// Current status
     pub status: MultisigStatus,
-    /// List of signers who have signed
+    /// List of authorized signers
     pub signers: Vec<Address>,
+}
+
+/// Governance information for a multi-signature split
+#[contracttype]
+#[derive(Clone, Debug)]
+pub struct GovernanceInfo {
+    /// Total number of authorized signers
+    pub num_signers: u32,
+    /// Required number of signatures
+    pub required_signatures: u32,
+    /// Current number of signatures collected
+    pub current_signatures: u32,
+    /// Threshold as a percentage (0-100)
+    pub threshold_percentage: u32,
 }
 
 /// Error types for the contract
@@ -49,4 +63,10 @@ pub enum MultisigError {
     SplitNotActive = 8,
     SplitAlreadyExecuted = 9,
     SplitCancelled = 10,
+    SignerAlreadyExists = 11,
+    SignerNotFound = 12,
+    CannotRemoveLastSigner = 13,
+    ThresholdTooHigh = 14,
+    ThresholdTooLow = 15,
+    InvalidSigner = 16,
 }

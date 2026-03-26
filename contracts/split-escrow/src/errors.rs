@@ -14,7 +14,9 @@ pub enum Error {
     TreasuryNotSet = 9,
     ParticipantCapExceeded = 10,
     InvalidVersion = 11,
+    InvalidInput = 12,
+    EscrowNotActive = 13,
     /// Split is already finalized (released or cancelled) or otherwise not active.
-    SplitNotActive = 12,
-    InvalidMetadata = 13,
+    SplitNotActive = 14,
+    InvalidMetadata = 15,
 }

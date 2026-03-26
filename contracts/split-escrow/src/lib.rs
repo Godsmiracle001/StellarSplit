@@ -13,8 +13,16 @@ pub use crate::errors::Error;
 pub use crate::types::{Split, SplitStatus};
 
 const DEFAULT_MAX_PARTICIPANTS: u32 = 50;
+const MAX_NOTE_LEN: u32 = 128;
 const MAX_METADATA_ENTRIES: u32 = 5;
 const MAX_METADATA_STRING_LEN: u32 = 64;
+
+fn validate_note_len(note: &String) -> Result<(), Error> {
+    if note.len() > MAX_NOTE_LEN {
+        return Err(Error::InvalidInput);
+    }
+    Ok(())
+}
 
 fn participant_known(participants: &Vec<Address>, addr: &Address) -> bool {
     let mut i = 0u32;
@@ -93,14 +101,14 @@ impl SplitEscrowContract {
     }
 
     /// Create an escrow split. If `max_participants` is `None`, the cap defaults to 50.
+    /// Optional `note` is stored on-chain (max 128 bytes); use `None` for no note.
     pub fn create_escrow(
         env: Env,
         creator: Address,
         description: String,
         total_amount: i128,
         max_participants: Option<u32>,
-        metadata: Option<Map<String, String>>,
-        whitelist_enabled: bool,
+        note: Option<String>,
     ) -> Result<u64, Error> {
         if !storage::has_admin(&env) {
             return Err(Error::NotInitialized);
@@ -115,8 +123,15 @@ impl SplitEscrowContract {
             return Err(Error::InvalidAmount);
         }
 
-        let metadata = metadata.unwrap_or(Map::new(&env));
-        validate_metadata(&metadata)?;
+        let metadata = Map::new(&env);
+
+        let note_stored = match note {
+            Some(n) => {
+                validate_note_len(&n)?;
+                n
+            }
+            None => String::from_str(&env, ""),
+        };
 
         let split_id = storage::get_next_split_id(&env);
         storage::bump_next_split_id(&env);
@@ -132,11 +147,35 @@ impl SplitEscrowContract {
             max_participants: cap,
             participants: Vec::new(&env),
             balances: Map::new(&env),
+            note: note_stored,
         };
         storage::set_split(&env, &split);
-        storage::set_whitelist_enabled(&env, split_id, whitelist_enabled);
+        storage::set_whitelist_enabled(&env, split_id, false);
         events::emit_split_created(&env, &split);
         Ok(split_id)
+    }
+
+    /// Creator-only: update the on-chain note while the escrow is active (Pending or Ready).
+    pub fn set_note(env: Env, split_id: u64, note: String) -> Result<(), Error> {
+        validate_note_len(&note)?;
+        let mut split = storage::get_split(&env, split_id).ok_or(Error::SplitNotFound)?;
+        split.creator.require_auth();
+        if !is_active(&split.status) {
+            return Err(Error::SplitNotActive);
+        }
+        if split.note == note {
+            return Ok(());
+        }
+        split.note = note.clone();
+        storage::set_split(&env, &split);
+        events::emit_note_updated(&env, split_id, &note);
+        Ok(())
+    }
+
+    /// Public read of the escrow note (empty string if none was set).
+    pub fn get_note(env: Env, split_id: u64) -> Result<String, Error> {
+        let split = storage::get_split(&env, split_id).ok_or(Error::SplitNotFound)?;
+        Ok(split.note.clone())
     }
 
     pub fn deposit(

@@ -40,6 +40,8 @@ pub struct Template {
     pub split_type: SplitType,
     /// List of participants and their shares
     pub participants: Vec<Participant>,
+    /// Template schema version
+    pub version: u32,
 }
 
 /// Contract errors
@@ -53,4 +55,6 @@ pub enum Error {
     InvalidParticipants = 2,
     /// Shares are invalid for the given split type
     InvalidShares = 3,
+    /// Template version is incompatible with the current contract
+    IncompatibleVersion = 4,
 }

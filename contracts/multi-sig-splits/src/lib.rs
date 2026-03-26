@@ -241,4 +241,183 @@ impl MultisigSplitsContract {
         let split = storage::get_split(&env, &split_id);
         storage::can_execute(&env, &split)
     }
+
+    /// Add a new signer to a multi-signature split
+    ///
+    /// This function allows adding new authorized signers to an existing split.
+    /// Requires admin authorization and cannot be performed on executed/cancelled splits.
+    pub fn add_signer(
+        env: Env,
+        split_id: String,
+        new_signer: Address,
+    ) -> Result<(), MultisigError> {
+        // Get the admin
+        let admin = storage::get_admin(&env);
+
+        // Verify the admin is authorizing this call
+        admin.require_auth();
+
+        // Check if split exists
+        if !storage::split_exists(&env, &split_id) {
+            return Err(MultisigError::SplitNotFound);
+        }
+
+        let split = storage::get_split(&env, &split_id);
+
+        // Cannot modify executed or cancelled splits
+        if split.status == MultisigStatus::Executed || split.status == MultisigStatus::Cancelled {
+            return Err(MultisigError::SplitAlreadyExecuted);
+        }
+
+        // Verify the new signer is valid (not zero address)
+        new_signer.require_auth();
+
+        // Add the signer
+        storage::add_signer(&env, &split_id, &new_signer)?;
+
+        // Emit events
+        events::emit_signer_added(&env, &split_id, &new_signer);
+        events::emit_governance_changed(
+            &env,
+            &split_id,
+            &String::from_str(&env, "signer_added"),
+            &admin,
+        );
+
+        Ok(())
+    }
+
+    /// Remove a signer from a multi-signature split
+    ///
+    /// This function allows removing authorized signers from an existing split.
+    /// Requires admin authorization and cannot remove the last remaining signer.
+    pub fn remove_signer(
+        env: Env,
+        split_id: String,
+        signer_to_remove: Address,
+    ) -> Result<(), MultisigError> {
+        // Get the admin
+        let admin = storage::get_admin(&env);
+
+        // Verify the admin is authorizing this call
+        admin.require_auth();
+
+        // Check if split exists
+        if !storage::split_exists(&env, &split_id) {
+            return Err(MultisigError::SplitNotFound);
+        }
+
+        let split = storage::get_split(&env, &split_id);
+
+        // Cannot modify executed or cancelled splits
+        if split.status == MultisigStatus::Executed || split.status == MultisigStatus::Cancelled {
+            return Err(MultisigError::SplitAlreadyExecuted);
+        }
+
+        // Remove the signer
+        storage::remove_signer(&env, &split_id, &signer_to_remove)?;
+
+        // Emit events
+        events::emit_signer_removed(&env, &split_id, &signer_to_remove);
+        events::emit_governance_changed(
+            &env,
+            &split_id,
+            &String::from_str(&env, "signer_removed"),
+            &admin,
+        );
+
+        Ok(())
+    }
+
+    /// Update the signature threshold for a multi-signature split
+    ///
+    /// This function allows changing the required number of signatures.
+    /// The new threshold must be between 1 and the total number of signers (inclusive).
+    pub fn update_threshold(
+        env: Env,
+        split_id: String,
+        new_threshold: u32,
+    ) -> Result<(), MultisigError> {
+        // Get the admin
+        let admin = storage::get_admin(&env);
+
+        // Verify the admin is authorizing this call
+        admin.require_auth();
+
+        // Check if split exists
+        if !storage::split_exists(&env, &split_id) {
+            return Err(MultisigError::SplitNotFound);
+        }
+
+        let split = storage::get_split(&env, &split_id);
+
+        // Cannot modify executed or cancelled splits
+        if split.status == MultisigStatus::Executed || split.status == MultisigStatus::Cancelled {
+            return Err(MultisigError::SplitAlreadyExecuted);
+        }
+
+        // Store old threshold for event
+        let old_threshold = split.required_signatures;
+
+        // Update the threshold
+        storage::update_threshold(&env, &split_id, new_threshold)?;
+
+        // Emit events
+        events::emit_threshold_updated(&env, &split_id, old_threshold, new_threshold);
+        events::emit_governance_changed(
+            &env,
+            &split_id,
+            &String::from_str(&env, "threshold_updated"),
+            &admin,
+        );
+
+        Ok(())
+    }
+
+    /// Get the list of authorized signers for a split
+    pub fn get_signers(env: Env, split_id: String) -> Vec<Address> {
+        if !storage::split_exists(&env, &split_id) {
+            return Vec::new(&env);
+        }
+        let split = storage::get_split(&env, &split_id);
+        split.signers
+    }
+
+    /// Get governance information for a split
+    pub fn get_governance_info(
+        env: Env,
+        split_id: String,
+    ) -> GovernanceInfo {
+        if !storage::split_exists(&env, &split_id) {
+            return GovernanceInfo {
+                num_signers: 0,
+                required_signatures: 0,
+                current_signatures: 0,
+                threshold_percentage: 0,
+            };
+        }
+        
+        let split = storage::get_split(&env, &split_id);
+        let num_signers = split.signers.len() as u32;
+        let threshold_percentage = if num_signers > 0 {
+            (split.required_signatures * 100) / num_signers
+        } else {
+            0
+        };
+
+        GovernanceInfo {
+            num_signers,
+            required_signatures: split.required_signatures,
+            current_signatures: split.current_signatures,
+            threshold_percentage,
+        }
+    }
+
+    /// Check if an address is an authorized signer for a split
+    pub fn is_signer(env: Env, split_id: String, potential_signer: Address) -> bool {
+        if !storage::split_exists(&env, &split_id) {
+            return false;
+        }
+        storage::is_signer(&env, &split_id, &potential_signer)
+    }
 }

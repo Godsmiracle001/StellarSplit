@@ -1,16 +1,32 @@
-import { Module } from '@nestjs/common';
-import { SplitCalculationService } from './split-calculation.service';
+import { Module } from "@nestjs/common";
+import { TypeOrmModule } from "@nestjs/typeorm";
+import { Item } from "../../entities/item.entity";
+import { Participant } from "../../entities/participant.entity";
+import { Split } from "../../entities/split.entity";
+import { OcrModule } from "../../ocr/ocr.module";
+import { Receipt } from "../../receipts/entities/receipt.entity";
+import { ParticipantsModule } from "../participants/participants.module";
+import { SplitCalculationService } from "./split-calculation.service";
+import { SplitsController } from "./splits.controller";
+import { SplitsService } from "./splits.service";
 
 /**
- * Module for split calculation functionality
+ * Module for split calculation and management functionality
  * Provides services for calculating bill splits across multiple types:
  * - Equal splits
  * - Itemized splits
  * - Percentage-based splits
  * - Custom amount splits
+ * Also provides CRUD operations for splits and receipt-to-split workflow
  */
 @Module({
-  providers: [SplitCalculationService],
-  exports: [SplitCalculationService],
+  imports: [
+    TypeOrmModule.forFeature([Split, Item, Participant, Receipt]),
+    OcrModule,
+    ParticipantsModule,
+  ],
+  controllers: [SplitsController],
+  providers: [SplitCalculationService, SplitsService],
+  exports: [SplitCalculationService, SplitsService],
 })
 export class SplitsModule {}

@@ -349,6 +349,52 @@ mod tests {
     }
 
     // ============================================
+    // Versioning Tests
+    // ============================================
+
+    #[test]
+    fn test_get_template_version() {
+        let (_env, _creator, client) = setup();
+
+        let version = client.get_template_version();
+        assert_eq!(version, 1);
+    }
+
+    #[test]
+    fn test_is_compatible_current_version() {
+        let (_env, _creator, client) = setup();
+
+        assert!(client.is_compatible(&1));
+    }
+
+    #[test]
+    fn test_is_not_compatible_old_version() {
+        let (_env, _creator, client) = setup();
+
+        assert!(!client.is_compatible(&0));
+    }
+
+    #[test]
+    fn test_is_not_compatible_future_version() {
+        let (_env, _creator, client) = setup();
+
+        assert!(!client.is_compatible(&2));
+    }
+
+    #[test]
+    fn test_template_stores_version() {
+        let (env, creator, client) = setup();
+
+        let name = SorobanString::from_str(&env, "Versioned Template");
+        let participants = create_equal_split_participants(&env, 2);
+
+        let template_id = client.create_template(&creator, &name, &SplitType::Equal, &participants);
+
+        let template = client.get_template(&template_id);
+        assert_eq!(template.version, 1);
+    }
+
+    // ============================================
     // Edge Cases
     // ============================================
 

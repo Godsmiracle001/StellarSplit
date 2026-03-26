@@ -1,24 +1,32 @@
 import {
-  Controller,
-  Get,
-  Post,
-  Delete,
   Body,
-  Param,
-  Query,
+  Controller,
+  Delete,
+  Get,
   HttpCode,
   HttpStatus,
+  Param,
+  Post,
+  Query,
+  UseGuards,
 } from "@nestjs/common";
 
-import { BatchService } from "./batch.service";
-import { BatchJobStatus } from "./entities/batch-job.entity";
 import {
-  CreateBatchSplitsDto,
+  Permissions,
+  RequirePermissions,
+} from "../auth/decorators/permissions.decorator";
+import { AuthorizationGuard } from "../auth/guards/authorization.guard";
+import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
+import { BatchService } from "./batch.service";
+import {
   CreateBatchPaymentsDto,
+  CreateBatchSplitsDto,
   RetryBatchDto,
 } from "./dto/create-batch.dto";
+import { BatchJobStatus } from "./entities/batch-job.entity";
 
 @Controller("batch")
+@UseGuards(JwtAuthGuard, AuthorizationGuard)
 export class BatchController {
   constructor(private readonly batchService: BatchService) {}
 
@@ -27,6 +35,7 @@ export class BatchController {
    */
   @Post("splits")
   @HttpCode(HttpStatus.CREATED)
+  @RequirePermissions(Permissions.CAN_CREATE_SPLIT)
   async createBatchSplits(@Body() dto: CreateBatchSplitsDto) {
     return this.batchService.createBatchSplits(dto);
   }
@@ -36,6 +45,7 @@ export class BatchController {
    */
   @Post("payments")
   @HttpCode(HttpStatus.CREATED)
+  @RequirePermissions(Permissions.CAN_CREATE_PAYMENT)
   async createBatchPayments(@Body() dto: CreateBatchPaymentsDto) {
     return this.batchService.createBatchPayments(dto);
   }
@@ -89,9 +99,6 @@ export class BatchController {
     @Param("batchId") batchId: string,
     @Query("status") status?: string,
   ) {
-    return this.batchService.getBatchOperations(
-      batchId,
-      status as any,
-    );
+    return this.batchService.getBatchOperations(batchId, status as any);
   }
 }

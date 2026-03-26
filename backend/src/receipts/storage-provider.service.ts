@@ -1,5 +1,5 @@
-import { Injectable } from '@nestjs/common';
-import * as AWS from 'aws-sdk';
+import { Injectable } from "@nestjs/common";
+import * as AWS from "aws-sdk";
 
 @Injectable()
 export class StorageProviderService {
@@ -7,17 +7,19 @@ export class StorageProviderService {
 
   async saveFile(file: Express.Multer.File): Promise<string> {
     const key = `receipts/${Date.now()}-${file.originalname}`;
-    await this.s3.putObject({
-      Bucket: process.env.AWS_BUCKET!,
-      Key: key,
-      Body: file.buffer,
-      ContentType: file.mimetype,
-    }).promise();
+    await this.s3
+      .putObject({
+        Bucket: process.env.AWS_BUCKET!,
+        Key: key,
+        Body: file.buffer,
+        ContentType: file.mimetype,
+      })
+      .promise();
     return key;
   }
 
   async getSignedUrl(key: string, expiresIn: number) {
-    return this.s3.getSignedUrl('getObject', {
+    return this.s3.getSignedUrl("getObject", {
       Bucket: process.env.AWS_BUCKET!,
       Key: key,
       Expires: expiresIn,
@@ -25,9 +27,22 @@ export class StorageProviderService {
   }
 
   async deleteFile(key: string) {
-    await this.s3.deleteObject({
-      Bucket: process.env.AWS_BUCKET!,
-      Key: key,
-    }).promise();
+    await this.s3
+      .deleteObject({
+        Bucket: process.env.AWS_BUCKET!,
+        Key: key,
+      })
+      .promise();
+  }
+
+  async getFileBuffer(key: string): Promise<Buffer> {
+    const result = await this.s3
+      .getObject({
+        Bucket: process.env.AWS_BUCKET!,
+        Key: key,
+      })
+      .promise();
+
+    return result.Body as Buffer;
   }
 }

@@ -49,7 +49,6 @@ fn setup() -> (
         &10_000i128,
         &None,
         &None,
-        &false,
     );
     token_admin_client.mint(&participant, &10_000i128);
     escrow_client.deposit(&escrow_split_id, &participant, &10_000i128);

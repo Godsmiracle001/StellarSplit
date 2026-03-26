@@ -21,6 +21,10 @@ pub use storage::*;
 pub use types::*;
 pub use utils::*;
 
+/// Current template schema version. Bump when the Template struct or contract
+/// semantics change in a backwards-incompatible way.
+pub const CURRENT_TEMPLATE_VERSION: u32 = 1;
+
 /// The Split Template contract for managing reusable split configurations.
 #[contract]
 pub struct SplitTemplateContract;
@@ -70,6 +74,7 @@ impl SplitTemplateContract {
             name,
             split_type,
             participants,
+            version: CURRENT_TEMPLATE_VERSION,
         };
 
         // Store the template
@@ -78,8 +83,14 @@ impl SplitTemplateContract {
         // Add to creator's index for efficient lookup
         storage::add_to_creator_index(&env, &creator, template_id.clone());
 
-        // Emit event
-        events::emit_template_created(&env, template_id.clone(), creator, template.name.clone());
+        // Emit event (includes version)
+        events::emit_template_created(
+            &env,
+            template_id.clone(),
+            creator,
+            template.name.clone(),
+            CURRENT_TEMPLATE_VERSION,
+        );
 
         Ok(template_id)
     }
@@ -142,6 +153,22 @@ impl SplitTemplateContract {
     /// The template if found, or an error
     pub fn get_template(env: Env, template_id: String) -> Result<Template, Error> {
         storage::get_template(&env, &template_id).ok_or(Error::TemplateNotFound)
+    }
+
+    /// Return the current template version used by this contract.
+    ///
+    /// Useful for off-chain tooling to detect contract upgrades.
+    pub fn get_template_version(_env: Env) -> u32 {
+        CURRENT_TEMPLATE_VERSION
+    }
+
+    /// Check whether a given version is compatible with the current contract.
+    ///
+    /// Returns `true` when `version` equals `CURRENT_TEMPLATE_VERSION`.
+    /// Callers can use this before attempting to deserialize or apply a template
+    /// that was created by a potentially different contract version.
+    pub fn is_compatible(_env: Env, version: u32) -> bool {
+        version == CURRENT_TEMPLATE_VERSION
     }
 
     // ============================================

@@ -44,3 +44,35 @@ pub fn emit_emergency_override(env: &Env, split_id: &String, admin: &Address) {
         (split_id.clone(), admin.clone()),
     );
 }
+
+/// Emit signer added event
+pub fn emit_signer_added(env: &Env, split_id: &String, signer: &Address) {
+    env.events().publish(
+        ("signer_added", "split_id", "signer"),
+        (split_id.clone(), signer.clone()),
+    );
+}
+
+/// Emit signer removed event
+pub fn emit_signer_removed(env: &Env, split_id: &String, signer: &Address) {
+    env.events().publish(
+        ("signer_removed", "split_id", "signer"),
+        (split_id.clone(), signer.clone()),
+    );
+}
+
+/// Emit threshold updated event
+pub fn emit_threshold_updated(env: &Env, split_id: &String, old_threshold: u32, new_threshold: u32) {
+    env.events().publish(
+        ("threshold_updated", "split_id", "old_threshold", "new_threshold"),
+        (split_id.clone(), old_threshold, new_threshold),
+    );
+}
+
+/// Emit governance changed event (for any governance-related changes)
+pub fn emit_governance_changed(env: &Env, split_id: &String, change_type: &String, actor: &Address) {
+    env.events().publish(
+        ("governance_changed", "split_id", "change_type", "actor"),
+        (split_id.clone(), change_type.clone(), actor.clone()),
+    );
+}

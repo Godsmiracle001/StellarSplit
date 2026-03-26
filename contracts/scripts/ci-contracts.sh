@@ -5,15 +5,18 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONTRACTS_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-# `split-escrow` is intentionally excluded for now because the Rust source in
-# `contracts/split-escrow/src/lib.rs` is draft/broken and does not parse.
-# `dispute-resolution` is also excluded because the contract/test API is still
-# mid-port and does not compile under the pinned Soroban toolchain yet.
-# `multi-sig-splits`, `path-payment`, `split-template`, and `staking` are
-# excluded until they are verified clean under the pinned Soroban toolchain.
+# Supported contracts: all crates that compile cleanly under the pinned Soroban toolchain.
+#
+# Excluded (broken):
+# - dispute-resolution: many compilation errors (mid-port to pinned Soroban toolchain)
+# - split-escrow: many compilation errors (draft/broken source)
+# - multi-sig-splits: E0507 move error (needs ownership fix)
 SUPPORTED_CONTRACTS=(
   "achievement-badges"
   "flash-loan"
+  "path-payment"
+  "split-template"
+  "staking"
 )
 
 COMMAND="${1:-all}"
@@ -36,16 +39,27 @@ run_for_contract() {
       cargo build --manifest-path "$manifest" --target wasm32-unknown-unknown --release
       ;;
     *)
-      echo "Unsupported command: $COMMAND"
-      echo "Usage: bash ./scripts/ci-contracts.sh [fmt|test|build]"
+      echo "Unsupported command: $COMMAND (expected fmt, test, build, or all)"
+      echo "Usage: bash ./scripts/ci-contracts.sh [fmt|test|build|all]"
       exit 1
       ;;
   esac
 }
 
-for contract in "${SUPPORTED_CONTRACTS[@]}"; do
-  run_for_contract "$contract"
-done
+if [ "$COMMAND" = "all" ]; then
+  # Run fmt, test, and build sequentially for all supported contracts
+  for step in fmt test build; do
+    COMMAND="$step"
+    for contract in "${SUPPORTED_CONTRACTS[@]}"; do
+      run_for_contract "$contract"
+    done
+  done
+  COMMAND="all"
+else
+  for contract in "${SUPPORTED_CONTRACTS[@]}"; do
+    run_for_contract "$contract"
+  done
+fi
 
 echo ""
 echo "All contract checks completed for: ${SUPPORTED_CONTRACTS[*]}"
