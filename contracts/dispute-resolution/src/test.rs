@@ -5,7 +5,7 @@ use crate::{DisputeContract, DisputeContractClient};
 use soroban_sdk::token::{Client as TokenClient, StellarAssetClient as TokenAdminClient};
 use soroban_sdk::{
     testutils::{Address as _, Ledger},
-    Address, Env, String,
+    Address, Env, Map, String,
 };
 use split_escrow::{
     SplitEscrowContract, SplitEscrowContractClient, SplitStatus as EscrowSplitStatus,
@@ -49,7 +49,9 @@ fn setup() -> (
         &creator,
         &String::from_str(&env, "Escrow split for disputes"),
         &10_000i128,
+        &Map::new(&env),
         &None,
+        &false,
         &None,
     );
     token_admin_client.mint(&participant, &10_000i128);

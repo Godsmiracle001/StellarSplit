@@ -5,9 +5,9 @@ use soroban_sdk::{contracttype, Address, Map, String, Vec};
 pub enum SplitStatus {
     Pending,
     Ready,
-    Released,
     /// Funds refunded to participants (e.g. dispute upheld).
     Cancelled,
+    Released,
 }
 
 /// Escrow split state. `participants.len()` is the current distinct participant count.
@@ -27,6 +27,8 @@ pub struct Split {
     pub participants: Vec<Address>,
     /// Per-participant deposited balances so we can refund on dispute outcomes.
     pub balances: Map<Address, i128>,
+    /// Per-participant expected contribution.
+    pub obligations: Map<Address, i128>,
     /// Short on-chain context (max 128 bytes at creation/update); empty if unset.
     pub note: String,
 }

@@ -1,10 +1,21 @@
 import { Controller, Get, Post, Patch, Delete, Body, Param, Query, HttpCode, HttpStatus } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery } from '@nestjs/swagger';
+import {
+  ApiBadRequestResponse,
+  ApiNotFoundResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiParam,
+  ApiQuery,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { ActivitiesService, PaginatedActivitiesResponse } from './activities.service';
 import { CreateActivityDto } from './dto/create-activity.dto';
 import { GetActivitiesDto } from './dto/get-activities.dto';
 import { MarkAsReadDto } from './dto/mark-as-read.dto';
-import { Activity } from '../../entities/activity.entity';
+import { Activity, ActivityType } from '../../entities/activity.entity';
+import { PaginatedActivitiesResponseDto } from './dto/activity-response.dto';
+import { ApiErrorResponseDto, CountResponseDto, UpdatedCountResponseDto } from '../../common/dto/api-error-response.dto';
 
 @ApiTags('Activities')
 @Controller('activities')
@@ -14,7 +25,7 @@ export class ActivitiesController {
     @Post()
     @ApiOperation({ summary: 'Create a new activity (internal use)' })
     @ApiResponse({ status: 201, description: 'Activity created successfully', type: Activity })
-    @ApiResponse({ status: 400, description: 'Invalid input' })
+    @ApiBadRequestResponse({ description: 'Invalid input', type: ApiErrorResponseDto })
     async createActivity(@Body() createActivityDto: CreateActivityDto): Promise<Activity> {
         return this.activitiesService.createActivity(createActivityDto);
     }
@@ -22,8 +33,11 @@ export class ActivitiesController {
     @Get(':userId')
     @ApiOperation({ summary: 'Get paginated activities for a user' })
     @ApiParam({ name: 'userId', description: 'Wallet address of the user' })
-    @ApiResponse({ status: 200, description: 'Activities retrieved successfully' })
-    @ApiResponse({ status: 400, description: 'Invalid parameters' })
+    @ApiQuery({ name: 'page', required: false, type: Number, description: 'Page number (1-indexed)' })
+    @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Items per page' })
+    @ApiQuery({ name: 'activityType', required: false, enum: ActivityType, description: 'Optional activity type filter' })
+    @ApiOkResponse({ description: 'Activities retrieved successfully', type: PaginatedActivitiesResponseDto })
+    @ApiBadRequestResponse({ description: 'Invalid parameters', type: ApiErrorResponseDto })
     async getActivities(
         @Param('userId') userId: string,
         @Query() query: Omit<GetActivitiesDto, 'userId'>,
@@ -38,8 +52,8 @@ export class ActivitiesController {
     @HttpCode(HttpStatus.OK)
     @ApiOperation({ summary: 'Mark specific activities as read' })
     @ApiParam({ name: 'userId', description: 'Wallet address of the user' })
-    @ApiResponse({ status: 200, description: 'Activities marked as read successfully' })
-    @ApiResponse({ status: 404, description: 'Some activities not found' })
+    @ApiOkResponse({ description: 'Activities marked as read successfully', type: UpdatedCountResponseDto })
+    @ApiNotFoundResponse({ description: 'Some activities not found', type: ApiErrorResponseDto })
     async markAsRead(
         @Param('userId') userId: string,
         @Body() markAsReadDto: MarkAsReadDto,
@@ -51,7 +65,7 @@ export class ActivitiesController {
     @HttpCode(HttpStatus.OK)
     @ApiOperation({ summary: 'Mark all activities as read for a user' })
     @ApiParam({ name: 'userId', description: 'Wallet address of the user' })
-    @ApiResponse({ status: 200, description: 'All activities marked as read successfully' })
+    @ApiOkResponse({ description: 'All activities marked as read successfully', type: UpdatedCountResponseDto })
     async markAllAsRead(@Param('userId') userId: string): Promise<{ updated: number }> {
         return this.activitiesService.markAllAsRead(userId);
     }
@@ -59,7 +73,7 @@ export class ActivitiesController {
     @Get(':userId/unread-count')
     @ApiOperation({ summary: 'Get unread count for a user' })
     @ApiParam({ name: 'userId', description: 'Wallet address of the user' })
-    @ApiResponse({ status: 200, description: 'Unread count retrieved successfully' })
+    @ApiOkResponse({ description: 'Unread count retrieved successfully', type: CountResponseDto })
     async getUnreadCount(@Param('userId') userId: string): Promise<{ count: number }> {
         return this.activitiesService.getUnreadCount(userId);
     }
@@ -70,7 +84,7 @@ export class ActivitiesController {
     @ApiParam({ name: 'userId', description: 'Wallet address of the user' })
     @ApiParam({ name: 'activityId', description: 'ID of the activity to delete' })
     @ApiResponse({ status: 204, description: 'Activity deleted successfully' })
-    @ApiResponse({ status: 404, description: 'Activity not found' })
+    @ApiNotFoundResponse({ description: 'Activity not found', type: ApiErrorResponseDto })
     async deleteActivity(
         @Param('userId') userId: string,
         @Param('activityId') activityId: string,

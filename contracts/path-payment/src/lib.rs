@@ -225,22 +225,48 @@ impl PathPaymentContract {
             return Ok(current_amount);
         }
 
-        let router = storage::get_swap_router(&env).ok_or(Error::SwapFailed)?;
+        let router = match storage::get_swap_router(&env) {
+            Some(r) => r,
+            None => {
+                let to_asset = path.get(1).unwrap();
+                events::emit_swap_failed(
+                    &env,
+                    &source_addr,
+                    &to_asset.address().clone(),
+                    amount_in,
+                    "no_router_set",
+                );
+                return Err(Error::SwapFailed);
+            }
+        };
         for i in 0..path.len() - 1 {
             let to_asset = path.get(i + 1).unwrap();
             let to_addr = to_asset.address().clone();
-            let amount_out = Self::invoke_swap(&env, &router, &current_asset, &to_addr, current_amount);
+            let amount_out =
+                Self::invoke_swap(&env, &router, &current_asset, &to_addr, current_amount);
             match amount_out {
                 Ok(out) if out > 0 => {
                     current_amount = out;
                     current_asset = to_addr;
                 }
-                Ok(out) => {
-                    events::emit_swap_failed(&env, &current_asset, &to_addr, current_amount, "zero_or_negative_output");
+                Ok(_out) => {
+                    events::emit_swap_failed(
+                        &env,
+                        &current_asset,
+                        &to_addr,
+                        current_amount,
+                        "zero_or_negative_output",
+                    );
                     return Err(Error::SwapFailed);
                 }
                 Err(_) => {
-                    events::emit_swap_failed(&env, &current_asset, &to_addr, current_amount, "invoke_error");
+                    events::emit_swap_failed(
+                        &env,
+                        &current_asset,
+                        &to_addr,
+                        current_amount,
+                        "invoke_error",
+                    );
                     return Err(Error::SwapFailed);
                 }
             }

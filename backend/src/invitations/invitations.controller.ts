@@ -9,7 +9,20 @@ import {
   HttpCode,
   HttpStatus,
 } from "@nestjs/common";
-import { ApiOperation, ApiParam, ApiResponse, ApiTags } from "@nestjs/swagger";
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiConflictResponse,
+  ApiForbiddenResponse,
+  ApiGoneResponse,
+  ApiNotFoundResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiParam,
+  ApiResponse,
+  ApiTags,
+  ApiUnauthorizedResponse,
+} from "@nestjs/swagger";
 import {
   Permissions,
   RequirePermissions,
@@ -21,18 +34,28 @@ import { JoinInvitationDto } from "./dto/join-invitation.dto";
 import { Invitation } from "./invitation.entity";
 import { UpgradeGuestDto } from "./dto/upgrade-guest.dto";
 import { InvitationsService } from "./invitations.service";
+import {
+  InvitationCreateResponseDto,
+  InvitationJoinResponseDto,
+  InvitationResponseDto,
+  InvitationUpgradeResponseDto,
+} from "./dto/invitation-response.dto";
+import { ApiErrorResponseDto } from "../common/dto/api-error-response.dto";
 
 @ApiTags("Invitations")
 @Controller("invitations")
 @UseGuards(JwtAuthGuard, AuthorizationGuard)
+@ApiBearerAuth()
 export class InvitationsController {
   constructor(private readonly invitationsService: InvitationsService) {}
 
   @Post()
   @ApiOperation({ summary: "Create an invite link for a split" })
-  @ApiResponse({ status: 201, description: "Invite link created" })
-  @ApiResponse({ status: 404, description: "Split not found" })
-  @ApiResponse({ status: 409, description: "Duplicate invitation exists" })
+  @ApiResponse({ status: 201, description: "Invite link created", type: InvitationCreateResponseDto })
+  @ApiNotFoundResponse({ description: "Split not found", type: ApiErrorResponseDto })
+  @ApiConflictResponse({ description: "Duplicate invitation exists", type: ApiErrorResponseDto })
+  @ApiUnauthorizedResponse({ description: "Missing or invalid authentication", type: ApiErrorResponseDto })
+  @ApiForbiddenResponse({ description: "User lacks permission to create the invitation", type: ApiErrorResponseDto })
   @RequirePermissions(Permissions.CAN_CREATE_INVITATION)
   async create(@Body(ValidationPipe) dto: CreateInvitationDto) {
     return this.invitationsService.create(dto);
@@ -43,11 +66,13 @@ export class InvitationsController {
     summary: "Get invite details by token (validates expiry and use)",
   })
   @ApiParam({ name: "token", description: "Invite token (UUID)" })
-  @ApiResponse({ status: 200, description: "Invite details", type: Invitation })
-  @ApiResponse({
-    status: 410,
+  @ApiOkResponse({ description: "Invite details", type: InvitationResponseDto })
+  @ApiGoneResponse({
     description: "Invite expired or already used (Gone)",
+    type: ApiErrorResponseDto,
   })
+  @ApiUnauthorizedResponse({ description: "Missing or invalid authentication", type: ApiErrorResponseDto })
+  @ApiForbiddenResponse({ description: "User lacks permission to view the invitation", type: ApiErrorResponseDto })
   @RequirePermissions(Permissions.CAN_READ_INVITATION)
   async getByToken(@Param("token") token: string): Promise<Invitation> {
     return this.invitationsService.getByToken(token);
@@ -59,12 +84,15 @@ export class InvitationsController {
   @ApiResponse({
     status: 201,
     description: "Joined split; participant created",
+    type: InvitationJoinResponseDto,
   })
-  @ApiResponse({
-    status: 410,
+  @ApiGoneResponse({
     description: "Invite expired or already used (Gone)",
+    type: ApiErrorResponseDto,
   })
-  @ApiResponse({ status: 409, description: "Duplicate participant in split" })
+  @ApiConflictResponse({ description: "Duplicate participant in split", type: ApiErrorResponseDto })
+  @ApiUnauthorizedResponse({ description: "Missing or invalid authentication", type: ApiErrorResponseDto })
+  @ApiForbiddenResponse({ description: "User lacks permission to accept the invitation", type: ApiErrorResponseDto })
   @RequirePermissions(Permissions.CAN_ACCEPT_INVITATION)
   async join(
     @Param("token") token: string,
@@ -76,15 +104,13 @@ export class InvitationsController {
   @Post("upgrade-guest")
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: "Upgrade a guest participant to a registered user" })
-  @ApiResponse({
-    status: 200,
-    description: "Guest upgraded to registered user",
-  })
+  @ApiOkResponse({ description: "Guest upgraded to registered user", type: InvitationUpgradeResponseDto })
   @ApiResponse({
     status: 400,
     description: "Participant is already a registered user",
+    type: ApiErrorResponseDto,
   })
-  @ApiResponse({ status: 404, description: "Participant not found" })
+  @ApiNotFoundResponse({ description: "Participant not found", type: ApiErrorResponseDto })
   async upgradeGuest(@Body(ValidationPipe) dto: UpgradeGuestDto) {
     return this.invitationsService.upgradeGuest(dto);
   }
@@ -94,7 +120,7 @@ export class InvitationsController {
     summary: "Get all active (non-expired) invitations for a split",
   })
   @ApiParam({ name: "splitId", description: "Split ID (UUID)" })
-  @ApiResponse({ status: 200, description: "List of active invitations" })
+  @ApiOkResponse({ description: "List of active invitations", type: [InvitationResponseDto] })
   async getActiveInvitations(
     @Param("splitId") splitId: string,
   ): Promise<Invitation[]> {
@@ -106,7 +132,7 @@ export class InvitationsController {
   @ApiOperation({ summary: "Invalidate/revoke an invitation" })
   @ApiParam({ name: "id", description: "Invitation ID (UUID)" })
   @ApiResponse({ status: 204, description: "Invitation invalidated" })
-  @ApiResponse({ status: 404, description: "Invitation not found" })
+  @ApiNotFoundResponse({ description: "Invitation not found", type: ApiErrorResponseDto })
   async invalidate(@Param("id") id: string): Promise<void> {
     return this.invitationsService.invalidate(id);
   }

@@ -104,6 +104,7 @@ dotenv.config({
     ActivitiesModule,
     SearchModule,
     FriendshipModule,
+    InvitationsModule,
     MentionsModule,
     SplitCommentsModule,
     // Analytics module for user spending & reports

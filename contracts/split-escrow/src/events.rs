@@ -33,21 +33,13 @@ pub fn emit_released(env: &Env, split_id: u64, released_amount: i128) {
 }
 
 pub fn emit_cancelled(env: &Env, split_id: u64) {
-    env.events()
-        .publish(("cancelled", "split_id"), split_id);
+    env.events().publish(("cancelled", "split_id"), split_id);
 }
 
 pub fn emit_fees_collected(env: &Env, amount: i128, treasury: &Address) {
     env.events().publish(
         (Symbol::new(env, "FeesCollected"),),
         (amount, treasury.clone()),
-    );
-}
-
-pub fn emit_contract_upgraded(env: &Env, old_version: String, new_version: String) {
-    env.events().publish(
-        (Symbol::new(env, "ContractUpgraded"),),
-        (old_version, new_version),
     );
 }
 

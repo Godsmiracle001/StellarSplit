@@ -20,7 +20,12 @@ pub enum Error {
     InvalidVersion = 11,
     InvalidInput = 12,
     EscrowNotActive = 13,
+  InvalidMetadata = 13,
     /// Split is already finalized (released or cancelled) or otherwise not active.
     SplitNotActive = 14,
+    InvalidVersion = 15,
     InvalidMetadata = 15,
+    ParticipantNotOwed = 16,
+    InsufficientFulfillment = 17,
+    TotalAmountMismatch = 18,
 }

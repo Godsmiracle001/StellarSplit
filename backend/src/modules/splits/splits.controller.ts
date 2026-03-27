@@ -11,7 +11,14 @@ import {
   BadRequestException,
   Logger
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import {
+  ApiBadRequestResponse,
+  ApiNotFoundResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
 import { SplitsService } from './splits.service';
 import { 
   CreateSplitDto, 
@@ -21,6 +28,8 @@ import {
   SplitAllocationDto 
 } from './dto/split.dto';
 import { Split } from '../../entities/split.entity';
+import { SplitDetailResponseDto } from './dto/split-response.dto';
+import { ApiErrorResponseDto } from '../../common/dto/api-error-response.dto';
 
 @ApiTags('splits')
 @Controller('splits')
@@ -74,7 +83,8 @@ export class SplitsController {
 
   @Get(':id')
   @ApiOperation({ summary: 'Get a split by ID' })
-  @ApiResponse({ status: 200, description: 'Split retrieved', type: Split })
+  @ApiOkResponse({ description: 'Split retrieved', type: SplitDetailResponseDto })
+  @ApiNotFoundResponse({ description: 'Split not found', type: ApiErrorResponseDto })
   async getSplitById(@Param('id') splitId: string): Promise<Split> {
     return this.splitsService.getSplitById(splitId);
   }

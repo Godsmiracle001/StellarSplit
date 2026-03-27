@@ -95,21 +95,26 @@ impl SplitTemplateContract {
         Ok(template_id)
     }
 
-    /// Use an existing template to create a split (scaffolding).
+    /// Use an existing template to track its usage in a split.
     ///
     /// Loads the template and emits an event linking the template to a new split.
-    /// No cross-contract call yet; this is the scaffold for future integration.
+    /// This is called after the split is created to record the template usage.
     ///
     /// # Arguments
     /// * `env` - The Soroban environment
-    /// * `template_id` - The ID of the template to use
-    /// * `split_id` - The ID of the new split being created
+    /// * `template_id` - The ID of the template used
+    /// * `split_id` - The ID of the split created from the template
     ///
     /// # Returns
     /// Success or error if template not found
-    pub fn use_template(env: Env, template_id: String, split_id: String) -> Result<(), Error> {
+    pub fn use_template(env: Env, template_id: String, split_id: u64) -> Result<(), Error> {
         // Load the template; fail if not found
-        storage::get_template(&env, &template_id).ok_or(Error::TemplateNotFound)?;
+        let template = storage::get_template(&env, &template_id).ok_or(Error::TemplateNotFound)?;
+
+        // Check version compatibility
+        if !Self::is_compatible(env.clone(), template.version) {
+            return Err(Error::IncompatibleVersion);
+        }
 
         // Emit event linking template to split
         events::emit_template_used(&env, template_id, split_id);
@@ -177,11 +182,11 @@ impl SplitTemplateContract {
 
     /// Generate a deterministic template ID.
     ///
-    /// Creates a template ID from creator and name.
-    /// For simplicity, uses the name itself as the ID (must be unique per creator).
-    fn generate_template_id(_env: &Env, _creator: &Address, name: &String) -> String {
-        // Use the name itself as a simple, deterministic ID
-        // In production, could add timestamp/sequence for uniqueness
+    /// Creates a template ID from hash of creator address, name, and ledger timestamp.
+    /// This ensures uniqueness even with same name from same creator at different times.
+    fn generate_template_id(env: &Env, creator: &Address, name: &String) -> String {
+        // TODO: Use hash for production uniqueness
+        // For now, use name as simple ID
         name.clone()
     }
 

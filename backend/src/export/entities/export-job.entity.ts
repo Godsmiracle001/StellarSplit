@@ -24,7 +24,21 @@ export enum ExportStatus {
   PROCESSING = "PROCESSING",
   COMPLETED = "COMPLETED",
   FAILED = "FAILED",
+  CANCELLED = "CANCELLED",
   EXPIRED = "EXPIRED",
+}
+
+export enum ExportFailureCode {
+  VALIDATION_ERROR = "VALIDATION_ERROR",
+  QUEUE_ERROR = "QUEUE_ERROR",
+  DATA_FETCH_FAILED = "DATA_FETCH_FAILED",
+  GENERATION_FAILED = "GENERATION_FAILED",
+  STORAGE_UPLOAD_FAILED = "STORAGE_UPLOAD_FAILED",
+  EMAIL_DELIVERY_FAILED = "EMAIL_DELIVERY_FAILED",
+  FILE_EXPIRED = "FILE_EXPIRED",
+  FILE_NOT_FOUND = "FILE_NOT_FOUND",
+  CANCELLED = "CANCELLED",
+  UNKNOWN = "UNKNOWN",
 }
 
 export enum ReportType {
@@ -84,13 +98,13 @@ export class ExportJob {
   };
 
   @Column({ nullable: true })
-  fileName!: string;
+  fileName!: string | null;
 
   @Column({ nullable: true })
-  fileUrl!: string;
+  fileUrl!: string | null;
 
   @Column({ name: "s3_key", nullable: true })
-  s3Key!: string;
+  s3Key!: string | null;
 
   @Column({ type: "int", default: 0 })
   fileSize!: number;
@@ -105,10 +119,16 @@ export class ExportJob {
     totalSettlements: number;
     currencyBreakdown: Record<string, number>;
     categoryBreakdown: Record<string, number>;
-  };
+  } | null;
 
   @Column({ name: "error_message", nullable: true })
-  errorMessage!: string;
+  errorMessage!: string | null;
+
+  @Column({ name: "failure_code", nullable: true })
+  failureCode!: string | null;
+
+  @Column({ name: "failure_reason", type: "text", nullable: true })
+  failureReason!: string | null;
 
   @Column({ name: "expires_at", type: "timestamp" })
   expiresAt!: Date;
@@ -117,16 +137,34 @@ export class ExportJob {
   isScheduled!: boolean;
 
   @Column({ name: "schedule_id", nullable: true })
-  scheduleId!: string;
+  scheduleId!: string | null;
 
   @Column({ name: "email_recipient", nullable: true })
-  emailRecipient!: string;
+  emailRecipient!: string | null;
 
   @Column({ name: "email_sent", default: false })
   emailSent!: boolean;
 
   @Column({ name: "email_sent_at", type: "timestamp", nullable: true })
-  emailSentAt!: Date;
+  emailSentAt!: Date | null;
+
+  @Column({ type: "int", default: 0 })
+  progress!: number;
+
+  @Column({ name: "current_step", nullable: true })
+  currentStep!: string | null;
+
+  @Column({ name: "queue_job_id", nullable: true })
+  queueJobId!: string | null;
+
+  @Column({ name: "retry_count", type: "int", default: 0 })
+  retryCount!: number;
+
+  @Column({ name: "max_retries", type: "int", default: 3 })
+  maxRetries!: number;
+
+  @Column({ name: "started_at", type: "timestamp", nullable: true })
+  startedAt!: Date | null;
 
   @CreateDateColumn({ name: "created_at" })
   createdAt!: Date;
@@ -135,14 +173,14 @@ export class ExportJob {
   updatedAt!: Date;
 
   @Column({ name: "completed_at", type: "timestamp", nullable: true })
-  completedAt!: Date;
+  completedAt!: Date | null;
 
   @Index()
   @Column({ name: "is_tax_compliant", default: false })
   isTaxCompliant!: boolean;
 
   @Column({ name: "tax_year", type: "int", nullable: true })
-  taxYear!: number;
+  taxYear!: number | null;
 
   @Column({ type: "jsonb", nullable: true })
   metadata!: Record<string, any>;

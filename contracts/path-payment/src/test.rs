@@ -8,9 +8,14 @@ fn test_swap_failure_event_emitted() {
     use soroban_sdk::String;
 
     // Setup contract and environment
-    let (env, admin, token_a, token_b, _contract_id, client, _token_client, stellar_token) = setup_with_tokens();
+    let (env, admin, token_a, token_b, _contract_id, client, _token_client, stellar_token) =
+        setup_with_tokens();
     client.initialize(&admin);
-    client.set_rate(&Asset(token_a.clone()), &Asset(token_b.clone()), &10_000_000);
+    client.set_rate(
+        &Asset(token_a.clone()),
+        &Asset(token_b.clone()),
+        &10_000_000,
+    );
     let caller = Address::generate(&env);
     env.mock_all_auths();
     stellar_token.mint(&caller, &500_0000000i128);
@@ -27,13 +32,31 @@ fn test_swap_failure_event_emitted() {
     // Check that swap_fail event was emitted
     let events = env.events().all();
     let found = events.iter().any(|e| {
-        // Events are (contract_id, topics, data)
-        let (_contract_id, topics, data) = e;
-        topics.contains(&soroban_sdk::symbol_short!("swap_fail")) && data.len() == 4
+        let (addr, topics, data) = e;
+        if addr != client.address {
+            return false;
+        }
+
+        let target_symbol = soroban_sdk::symbol_short!("swap_fail");
+        let mut topic_found = false;
+        for t in topics.iter() {
+            if let Ok(sym) = Symbol::try_from_val(&env, &t) {
+                if sym == target_symbol {
+                    topic_found = true;
+                    break;
+                }
+            }
+        }
+
+        if topic_found {
+            if let Ok(data_vec) = Vec::<Val>::try_from_val(&env, &data) {
+                return data_vec.len() == 4;
+            }
+        }
+        false
     });
     assert!(found, "swap_fail event should be emitted on swap failure");
 }
-
 
 extern crate std;
 
@@ -42,7 +65,7 @@ use soroban_sdk::{
     contract, contractimpl, contracttype,
     testutils::{Address as _, Ledger as _},
     token::{Client as TokenClient, StellarAssetClient},
-    Address, Env, String, Vec,
+    Address, Env, String, Symbol, TryFromVal, Val, Vec,
 };
 
 fn setup() -> (Env, Address, PathPaymentContractClient<'static>) {

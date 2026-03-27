@@ -268,10 +268,18 @@ export class CreateExportTemplateDto {
   @IsString()
   description?: string;
 
+  @ApiPropertyOptional({
+    description: "Whether this template should run on a schedule",
+    default: false,
+  })
   @IsOptional()
-  @IsString()
+  @IsBoolean()
   isScheduled?: boolean = false;
 
+  @ApiPropertyOptional({
+    description: "Cron expression for scheduled templates",
+    example: "0 9 1 * *",
+  })
   @IsOptional()
   @IsString()
   scheduleCron?: string;

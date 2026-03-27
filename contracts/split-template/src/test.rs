@@ -294,7 +294,7 @@ mod tests {
 
         let template_id = client.create_template(&creator, &name, &SplitType::Equal, &participants);
 
-        let split_id = SorobanString::from_str(&env, "SPLIT_001");
+        let split_id = 1000u64;
         let _ = client.use_template(&template_id, &split_id);
     }
 
@@ -304,7 +304,7 @@ mod tests {
         let (env, _creator, client) = setup();
 
         let fake_template_id = SorobanString::from_str(&env, "NONEXISTENT_TEMPLATE");
-        let split_id = SorobanString::from_str(&env, "SPLIT_001");
+        let split_id = 1000u64;
 
         let _ = client.use_template(&fake_template_id, &split_id);
     }
@@ -318,7 +318,7 @@ mod tests {
 
         let template_id = client.create_template(&creator, &name, &SplitType::Equal, &participants);
 
-        let split_id = SorobanString::from_str(&env, "SPLIT_EVENT_TEST");
+        let split_id = 1000u64;
 
         // Use the template and emit event
         let _ = client.use_template(&template_id, &split_id);

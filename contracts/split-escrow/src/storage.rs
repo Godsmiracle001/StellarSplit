@@ -1,8 +1,12 @@
 use soroban_sdk::{contracttype, Address, Env, String};
+
 use crate::types::Split;
+use soroban_sdk::{contracttype, Address, Env, String};
 
 const LEDGER_TTL_PERSISTENT: u32 = 31_536_000;
 const LEDGER_TTL_THRESHOLD: u32 = 86_400;
+
+use crate::types::Split;
 
 #[contracttype]
 #[derive(Clone)]
@@ -65,7 +69,7 @@ pub fn set_split(env: &Env, split: &Split) {
     env.storage().persistent().set(&key, split);
     env.storage()
         .persistent()
-        .extend_ttl(&key, LEDGER_TTL_THRESHOLD, LEDGER_TTL_PERSISTENT);
+        .extend_ttl(&key, LEDGER_TTL_PERSISTENT, LEDGER_TTL_PERSISTENT);
 }
 
 pub fn get_split(env: &Env, split_id: u64) -> Option<Split> {
@@ -77,7 +81,7 @@ pub fn set_whitelist_enabled(env: &Env, split_id: u64, enabled: bool) {
     env.storage().persistent().set(&key, &enabled);
     env.storage()
         .persistent()
-        .extend_ttl(&key, LEDGER_TTL_THRESHOLD, LEDGER_TTL_PERSISTENT);
+        .extend_ttl(&key, LEDGER_TTL_PERSISTENT, LEDGER_TTL_PERSISTENT);
 }
 
 pub fn is_whitelist_enabled(env: &Env, split_id: u64) -> bool {
@@ -92,7 +96,7 @@ pub fn add_to_whitelist(env: &Env, split_id: u64, address: &Address) {
     env.storage().persistent().set(&key, &true);
     env.storage()
         .persistent()
-        .extend_ttl(&key, LEDGER_TTL_THRESHOLD, LEDGER_TTL_PERSISTENT);
+        .extend_ttl(&key, LEDGER_TTL_PERSISTENT, LEDGER_TTL_PERSISTENT);
 }
 
 pub fn remove_from_whitelist(env: &Env, split_id: u64, address: &Address) {
