@@ -256,18 +256,27 @@ function getBasePathname(): string {
 }
 
 const BASE_PATHNAME = getBasePathname()
-const BASE_URL_IS_VERSIONED = /\/v\d+$/.test(BASE_PATHNAME)
+
+function isVersionedApiPathname(pathname: string): boolean {
+  return /\/v\d+$/.test(pathname.replace(/\/+$/, ''))
+}
 
 function uniqueValues(values: string[]): string[] {
   return Array.from(new Set(values))
 }
 
-function buildPathVariants(
+/**
+ * Builds the ordered list of path variants the HTTP client will try.
+ * @param basePathname Pathname of `BASE_API_URL` (e.g. `/api` or `/api/v1`); when omitted, uses the running app’s configured API base.
+ */
+export function buildPathVariants(
   endpoint: string,
   includeControllerApiPrefix = false,
+  basePathname: string = BASE_PATHNAME,
 ): string[] {
+  const normalizedPath = basePathname.replace(/\/+$/, '')
+  const versionPrefixes = isVersionedApiPathname(normalizedPath) ? [''] : ['/v1', '']
   const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`
-  const versionPrefixes = BASE_URL_IS_VERSIONED ? [''] : ['/v1', '']
   const controllerPrefixes = includeControllerApiPrefix ? ['/api', ''] : ['']
 
   return uniqueValues(
@@ -345,7 +354,7 @@ function createFieldErrorMap(messages: string[]): Record<string, string> {
   }, {})
 }
 
-function normalizeApiError(error: unknown): ApiError {
+export function normalizeApiError(error: unknown): ApiError {
   if (error instanceof ApiError) {
     return error
   }

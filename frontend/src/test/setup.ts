@@ -32,3 +32,5 @@ if (
     memoryStorage() as unknown as Storage;
 }
 
+// Api client regression tests mock `apiClient` (api-client.spec.ts) — no real backend.
+
