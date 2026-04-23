@@ -29,35 +29,39 @@ export interface SplitActivityData {
 }
 
 // ── Outbound event payloads ───────────────────────────────────────────────────
-// Fields are intentionally flexible to accommodate existing callers across
-// payment-processor, payment-reconciliation, payment-settlement, and
-// recurring-splits services. Required fields are those present in all usages;
-// everything else is optional.
+// splitId is passed as the first argument to the emitter methods, so it is
+// intentionally optional inside the data payload to allow callers to omit it.
+// All other fields are optional to accommodate the variety of shapes used
+// across payment-processor, reconciliation, settlement, and recurring-splits.
 
 export interface PaymentReceivedEvent {
-  splitId: string;
+  splitId?: string;
   paymentId?: string;
   participantId?: string;
   type?: string;
   amount?: number;
   currency?: string;
   txHash?: string;
+  asset?: string;
   timestamp?: string;
   [key: string]: unknown;
 }
 
 export interface SplitUpdatedEvent {
-  splitId: string;
+  splitId?: string;
   type?: string;
   status?: string;
   changes?: Record<string, unknown>;
   updatedAt?: string;
   timestamp?: string;
+  amountPaid?: number;
+  paymentId?: string;
+  participantId?: string;
   [key: string]: unknown;
 }
 
 export interface ParticipantJoinedEvent {
-  splitId: string;
+  splitId?: string;
   participantId: string;
   userId?: string;
   joinedAt?: string;

@@ -1,5 +1,5 @@
 import { Injectable, NestMiddleware } from '@nestjs/common';
-import { Request, Response, NextFunction } from 'express';
+import type { Request, Response, NextFunction } from 'express';
 import helmet from 'helmet';
 import xssClean from 'xss-clean';
 import csrf from 'csurf';
@@ -28,10 +28,12 @@ export class SecurityMiddleware implements NestMiddleware {
   });
 
   use(req: Request, res: Response, next: NextFunction): void {
-    this.helmetHandler(req, res, (helmetError?: Error) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    this.helmetHandler(req as any, res as any, (helmetError?: Error) => {
       if (helmetError) return next(helmetError);
 
-      this.xssCleanHandler(req, res, (xssError?: Error) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      this.xssCleanHandler(req as any, res as any, (xssError?: Error) => {
         if (xssError) return next(xssError);
 
         if (this.isProduction) {
@@ -44,11 +46,13 @@ export class SecurityMiddleware implements NestMiddleware {
           );
         }
 
-        this.rateLimitHandler(req, res, (rateLimitError?: Error) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        this.rateLimitHandler(req as any, res as any, (rateLimitError?: Error) => {
           if (rateLimitError) return next(rateLimitError);
 
           if (this.enableCsrf) {
-            this.csrfHandler(req, res, next);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            this.csrfHandler(req as any, res as any, next);
           } else {
             next();
           }
