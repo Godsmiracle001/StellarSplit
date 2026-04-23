@@ -7,6 +7,8 @@ import RootLayout from "./layouts/RootLayout";
 import { WalletProvider } from "./hooks/use-wallet";
 import { ThemeProvider } from "./components/ThemeContext";
 import { CollaborationProvider } from "./components/Collaboration";
+import RouteErrorBoundary from "./components/routing/RouteErrorBoundary";
+import RoutePending from "./components/routing/RoutePending";
 import { bootstrapTheme } from "./utils/themeBootstrap";
 import "./i18n/config";
 
@@ -17,6 +19,8 @@ const router = createBrowserRouter([
   {
     path: "/",
     element: <RootLayout />,
+    errorElement: <RouteErrorBoundary />,
+    hydrateFallbackElement: <RoutePending />,
     children: [
       { index: true, element: <HomePage /> },
       {
