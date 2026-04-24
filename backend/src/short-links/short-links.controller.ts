@@ -69,7 +69,8 @@ export class ShortLinksController {
    */
   @Post("nfc-payload/:splitId")
   @UseGuards(JwtAuthGuard)
-  generateNfc(@Param("splitId") splitId: string, @CurrentUser() user: AuthUser) {
+  async generateNfc(@Param("splitId") splitId: string, @CurrentUser() user: AuthUser) {
+    await this.service.validateNfcAccess(user.walletAddress, splitId);
     const url = this.urlBuilder.buildNfcUrl(splitId);
     return this.nfcService.generateNdefPayload(url, splitId, user.walletAddress);
   }

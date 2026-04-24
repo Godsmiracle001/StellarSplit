@@ -259,10 +259,11 @@ describe('Route regression coverage (integration)', () => {
 
     it('has the correct number of routes across all manifests', () => {
       const registeredPaths = Object.keys(swaggerDocument.paths);
-      const expectedTotal = ALL_MANIFESTS.reduce(
-        (sum, m) => sum + m.routes.length,
-        0,
-      );
+
+      // Use unique canonical paths (not raw route count) because multiple HTTP
+      // methods on the same path (e.g. GET + POST /compliance/categories) produce
+      // one Swagger path entry but count as two in the manifest routes array.
+      const expectedTotal = new Set(buildCanonicalPaths('api', 'v1')).size;
 
       // Filter to only our manifest paths (versioned)
       const ourPaths = registeredPaths.filter(p => {
@@ -523,7 +524,7 @@ describe('Route regression coverage (integration)', () => {
       const res = await request(app.getHttpServer())
         .post('/api/v1/short-links/generate')
         .set('x-user-id', 'user-1')
-        .send({ splitId: 'split-1' })
+        .send({ splitId: '550e8400-e29b-41d4-a716-446655440000', linkType: 'view_split' })
         .expect(201);
 
       expect(res.body).toMatchObject({ shortCode: 'abc123' });
