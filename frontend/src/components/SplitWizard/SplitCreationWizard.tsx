@@ -134,6 +134,13 @@ export const SplitCreationWizard = () => {
         }
     };
 
+    const handleStepClick = (stepIndex: number) => {
+        if (stepIndex < currentStep) {
+            setCurrentStep(stepIndex);
+            setErrors({});
+        }
+    };
+
     const handleSaveDraft = () => {
         draftRegistry.save('wizard', wizardState, 'wizard', wizardState.title || 'Split Wizard Draft');
         setDraftSaved(true);
@@ -324,7 +331,11 @@ export const SplitCreationWizard = () => {
                         {draftSaved ? t('wizard.draftSaved') : t('wizard.saveDraft')}
                     </button>
                 </div>
-                <StepIndicator steps={ALL_STEPS} currentStep={currentStep} />
+                <StepIndicator
+                    steps={ALL_STEPS}
+                    currentStep={currentStep}
+                    onStepClick={handleStepClick}
+                />
             </div>
 
             {/* Step content */}
