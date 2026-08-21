@@ -642,3 +642,33 @@ export async function createActivityRecord(
     signal,
   })
 }
+
+/**
+ * Mark specific activities as read on the backend (issue #702). This is the
+ * server-side source of truth the dashboard's unread badge reads from —
+ * local-only state changes here previously never reached the backend.
+ */
+export async function markActivitiesAsRead(
+  userId: string,
+  activityIds: string[],
+  signal?: AbortSignal,
+): Promise<{ updated: number }> {
+  return request<{ updated: number }, { activityIds: string[] }>({
+    method: 'patch',
+    endpoint: ApiRoutes.activities.markRead(userId),
+    data: { activityIds },
+    signal,
+  })
+}
+
+/** Mark all activities as read for a user on the backend (issue #702). */
+export async function markAllActivitiesAsRead(
+  userId: string,
+  signal?: AbortSignal,
+): Promise<{ updated: number }> {
+  return request<{ updated: number }>({
+    method: 'patch',
+    endpoint: ApiRoutes.activities.markAllRead(userId),
+    signal,
+  })
+}
