@@ -23,5 +23,6 @@ pub fn error_to_string(env: &soroban_sdk::Env, error: Error) -> String {
         Error::AlreadyInitialized => String::from_str(env, "Contract already initialized"),
         Error::MissingRouter => String::from_str(env, "Swap router not set"),
         Error::InvalidState => String::from_str(env, "Invalid contract state"),
+        Error::InvalidRate => String::from_str(env, "Conversion rate must be greater than zero"),
     }
 }

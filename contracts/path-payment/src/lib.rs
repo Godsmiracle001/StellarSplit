@@ -61,6 +61,20 @@ impl PathPaymentContract {
         if !storage::is_initialized(&env) {
             return Err(Error::NotInitialized);
         }
+        // #737: a rate is a multiplier applied as `(amount * rate) / 10_000_000`,
+        // so it must be strictly positive.
+        //
+        // Zero would make every conversion through this pair yield nothing,
+        // handing the user's asset over for free. It is also indistinguishable
+        // from "unset": `get_conversion_rate` returns 0 via `unwrap_or(0)` when
+        // no rate is registered, so storing a literal 0 makes a configured pair
+        // look unconfigured.
+        //
+        // A negative rate produces a negative output amount, which then flows
+        // into the slippage and transfer logic downstream.
+        if rate <= 0 {
+            return Err(Error::InvalidRate);
+        }
         storage::set_rate(&env, from_asset.address(), to_asset.address(), rate);
         Ok(())
     }

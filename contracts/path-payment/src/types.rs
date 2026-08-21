@@ -56,4 +56,6 @@ pub enum Error {
     AlreadyInitialized = 15,
     MissingRouter = 16,
     InvalidState = 17,
+    /// A conversion rate must be strictly positive (#737).
+    InvalidRate = 18,
 }
