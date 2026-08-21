@@ -85,12 +85,15 @@ impl StakingContract {
         staker.require_auth();
 
         let mut info = storage::get_staker_info(&env, &staker).ok_or(Error::InsufficientStake)?;
-        
-        // FIX: Check against available balance (staked - pending_withdrawal)
-        let available = info.amount.checked_sub(info.pending_withdrawal)
-            .ok_or(Error::InsufficientStake)?;
-        
-        if amount > available {
+
+        // `info.amount` is already net of everything moved to
+        // `pending_withdrawal` — see the updates further down, which decrement
+        // one and increment the other — so it *is* the available balance.
+        // Subtracting `pending_withdrawal` from it a second time double-counted
+        // the cooldown amount: after unstaking 700 of 1000, `amount` is 300 and
+        // `pending_withdrawal` is 700, so the old expression produced -400 and
+        // refused every further unstake, stranding the remaining stake.
+        if amount > info.amount {
             return Err(Error::InsufficientStake);
         }
 
@@ -243,6 +246,17 @@ impl StakingContract {
             .unwrap_or(0);
         let delegated = storage::get_delegated_amount(&env, &address);
         staked + delegated
+    }
+
+    /// Read a staker's full record.
+    ///
+    /// Returns `None` when the address has never staked, so callers can tell
+    /// "no such staker" apart from "a staker whose balances happen to be zero".
+    /// The storage helper this wraps already existed; only the public read was
+    /// missing, which left `test.rs` calling an entry point the contract did
+    /// not expose and the crate's tests unable to compile.
+    pub fn get_staker_info(env: Env, staker: Address) -> Option<StakerInfo> {
+        storage::get_staker_info(&env, &staker)
     }
 
     fn update_staker_rewards(env: &Env, staker: &Address) -> Result<(), Error> {
