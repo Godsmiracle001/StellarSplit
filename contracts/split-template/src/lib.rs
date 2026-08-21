@@ -165,7 +165,8 @@ impl SplitTemplateContract {
     /// Success or error if template not found
     pub fn use_template(env: Env, template_id: String, split_id: u64) -> Result<(), Error> {
         // Load the template; fail if not found
-        let mut template = storage::get_template(&env, &template_id).ok_or(Error::TemplateNotFound)?;
+        let mut template =
+            storage::get_template(&env, &template_id).ok_or(Error::TemplateNotFound)?;
 
         // Check version compatibility
         if !Self::is_compatible(env.clone(), template.version) {

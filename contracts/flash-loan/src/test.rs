@@ -280,8 +280,7 @@ fn test_failed_loan_clears_reentrancy_guard() {
     receiver_client.set_flash_loan(&flash_loan_id, &token_address);
     token_admin_client.mint(&receiver_id, &10000);
 
-    let success_result =
-        flash_loan_client.try_flash_loan(&receiver_id, &100000, &Bytes::new(&env));
+    let success_result = flash_loan_client.try_flash_loan(&receiver_id, &100000, &Bytes::new(&env));
     assert!(success_result.is_ok());
 }
 
