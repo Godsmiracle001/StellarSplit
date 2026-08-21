@@ -1243,3 +1243,129 @@ mod proptests {
         }
     }
 }
+
+// ========== set_rate validation (#737) ==========
+
+#[test]
+fn test_set_rate_rejects_zero() {
+    let (env, admin, client) = setup();
+    client.initialize(&admin);
+    let from = Asset(Address::generate(&env));
+    let to = Asset(Address::generate(&env));
+
+    let res = client.try_set_rate(&from, &to, &0i128);
+
+    assert!(res.is_err());
+    assert_eq!(res.err().unwrap(), Ok(Error::InvalidRate));
+}
+
+#[test]
+fn test_set_rate_rejects_negative() {
+    let (env, admin, client) = setup();
+    client.initialize(&admin);
+    let from = Asset(Address::generate(&env));
+    let to = Asset(Address::generate(&env));
+
+    let res = client.try_set_rate(&from, &to, &-10_000_000i128);
+
+    assert!(res.is_err());
+    assert_eq!(res.err().unwrap(), Ok(Error::InvalidRate));
+}
+
+#[test]
+fn test_set_rate_rejects_i128_min() {
+    // The extreme negative, which would also overflow on negation downstream.
+    let (env, admin, client) = setup();
+    client.initialize(&admin);
+    let from = Asset(Address::generate(&env));
+    let to = Asset(Address::generate(&env));
+
+    let res = client.try_set_rate(&from, &to, &i128::MIN);
+
+    assert!(res.is_err());
+    assert_eq!(res.err().unwrap(), Ok(Error::InvalidRate));
+}
+
+#[test]
+fn test_set_rate_accepts_smallest_positive_rate() {
+    // 1 is the boundary: the check rejects `<= 0`, so 1 must still pass.
+    let (env, admin, client) = setup();
+    client.initialize(&admin);
+    let from_addr = Address::generate(&env);
+    let to_addr = Address::generate(&env);
+
+    client.set_rate(&Asset(from_addr.clone()), &Asset(to_addr.clone()), &1i128);
+
+    assert_eq!(
+        client.get_conversion_rate(&Asset(from_addr), &Asset(to_addr)),
+        1
+    );
+}
+
+#[test]
+fn test_set_rate_still_accepts_a_normal_rate() {
+    let (env, admin, client) = setup();
+    client.initialize(&admin);
+    let from_addr = Address::generate(&env);
+    let to_addr = Address::generate(&env);
+
+    client.set_rate(
+        &Asset(from_addr.clone()),
+        &Asset(to_addr.clone()),
+        &20_000_000i128,
+    );
+
+    assert_eq!(
+        client.get_conversion_rate(&Asset(from_addr), &Asset(to_addr)),
+        20_000_000
+    );
+}
+
+#[test]
+fn test_rejected_set_rate_stores_nothing() {
+    // The write must not happen on the rejected path. `get_conversion_rate`
+    // returns 0 for an unset pair, which is the same value a stored zero would
+    // have produced — so this asserts the pair is still genuinely unregistered
+    // by confirming a later valid rate takes effect.
+    let (env, admin, client) = setup();
+    client.initialize(&admin);
+    let from_addr = Address::generate(&env);
+    let to_addr = Address::generate(&env);
+    let from = Asset(from_addr.clone());
+    let to = Asset(to_addr.clone());
+
+    assert!(client.try_set_rate(&from, &to, &0i128).is_err());
+    assert_eq!(
+        client.get_conversion_rate(&Asset(from_addr.clone()), &Asset(to_addr.clone())),
+        0
+    );
+
+    client.set_rate(&from, &to, &15_000_000i128);
+    assert_eq!(
+        client.get_conversion_rate(&Asset(from_addr), &Asset(to_addr)),
+        15_000_000
+    );
+}
+
+#[test]
+fn test_set_rate_on_uninitialized_contract_still_aborts_before_rate_validation() {
+    // Documents existing behaviour rather than the new check: `set_rate` calls
+    // `storage::get_admin(&env).require_auth()` before testing
+    // `is_initialized`, and on an uninitialised contract there is no admin to
+    // read, so the host aborts. The `NotInitialized` branch inside `set_rate`
+    // is therefore unreachable.
+    //
+    // Asserted here so the new validation is demonstrably not what changed
+    // this path. Worth a separate look; out of scope for #737.
+    let (env, _admin, client) = setup();
+    let from = Asset(Address::generate(&env));
+    let to = Asset(Address::generate(&env));
+
+    let res = client.try_set_rate(&from, &to, &0i128);
+
+    assert!(res.is_err());
+    assert!(
+        res.err().unwrap().is_err(),
+        "expected a host abort, not a contract error"
+    );
+}

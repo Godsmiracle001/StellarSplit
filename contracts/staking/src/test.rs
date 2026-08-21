@@ -244,7 +244,9 @@ fn test_cannot_double_unstake_beyond_stake() {
     assert_eq!(result.err().unwrap(), Ok(Error::InsufficientStake));
 
     // Verify state unchanged
-    let info = staking_client.get_staker_info(&staker);
+    let info = staking_client
+        .get_staker_info(&staker)
+        .expect("staker record must exist after staking");
     assert_eq!(info.amount, 300);
     assert_eq!(info.pending_withdrawal, 700);
 }
@@ -286,7 +288,9 @@ fn test_single_unstake_within_available_succeeds() {
     assert_eq!(staking_client.get_voting_power(&staker), 0);
 
     // Verify pending_withdrawal is now 1000
-    let info = staking_client.get_staker_info(&staker);
+    let info = staking_client
+        .get_staker_info(&staker)
+        .expect("staker record must exist after staking");
     assert_eq!(info.amount, 0);
     assert_eq!(info.pending_withdrawal, 1000);
 }
