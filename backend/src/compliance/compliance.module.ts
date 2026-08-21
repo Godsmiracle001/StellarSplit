@@ -6,6 +6,7 @@ import { ComplianceController } from './compliance.controller';
 import { HistoricalRatesService } from './historical-rates.service';
 import { ExpenseCategory } from './entities/expense-category.entity';
 import { TaxExportRequest } from './entities/tax-export-request.entity';
+import { HistoricalRateCache } from './entities/historical-rate-cache.entity';
 import { Split } from '../entities/split.entity';
 import { CSVExporterService } from './exporters/csv-exporter.service';
 import { PDFExporterService } from './exporters/pdf-exporter.service';
@@ -18,7 +19,12 @@ import { QueueJobPolicy, JobPolicyTier } from '../common/queue-job-policy';
 
 @Module({
     imports: [
-        TypeOrmModule.forFeature([ExpenseCategory, TaxExportRequest, Split]),
+        TypeOrmModule.forFeature([
+            ExpenseCategory,
+            TaxExportRequest,
+            Split,
+            HistoricalRateCache,
+        ]),
         BullModule.registerQueue(
             QueueJobPolicy.forQueue('compliance-export', JobPolicyTier.STANDARD),
         ),
