@@ -151,4 +151,112 @@ describe("AnalyticsService", () => {
     ]);
     expect(mockCache.set).toHaveBeenCalled();
   });
+
+  // BE-201
+  it("getPaymentHeatmap returns cached result when available", async () => {
+    mockCache.get.mockResolvedValue([
+      { date: "2026-01-01", count: 2, total: 100 },
+    ]);
+
+    const result = await service.getPaymentHeatmap({});
+    expect(result).toEqual([{ date: "2026-01-01", count: 2, total: 100 }]);
+    expect(mockCache.get).toHaveBeenCalled();
+  });
+
+  it("getPaymentHeatmap queries DB on cache miss, applies date/user filters, and caches result", async () => {
+    mockCache.get.mockResolvedValue(null);
+
+    const qb = {
+      select: jest.fn().mockReturnThis(),
+      addSelect: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      innerJoin: jest.fn().mockReturnThis(),
+      groupBy: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      getRawMany: jest.fn().mockResolvedValue([
+        { date: "2026-01-05T00:00:00.000Z", count: "4", total: "88.50" },
+      ]),
+    };
+    mockPaymentRepository.createQueryBuilder.mockReturnValue(qb);
+
+    const result = await service.getPaymentHeatmap({
+      dateFrom: "2026-01-01",
+      dateTo: "2026-01-31",
+      userId: "user1",
+    });
+
+    expect(mockPaymentRepository.createQueryBuilder).toHaveBeenCalled();
+    expect(qb.andWhere).toHaveBeenCalledWith(
+      'payment."createdAt" >= :from',
+      expect.objectContaining({ from: expect.any(String) }),
+    );
+    expect(qb.andWhere).toHaveBeenCalledWith(
+      'payment."createdAt" <= :to',
+      expect.objectContaining({ to: expect.any(String) }),
+    );
+    expect(qb.innerJoin).toHaveBeenCalled();
+    expect(result).toEqual([{ date: "2026-01-05", count: 4, total: 88.5 }]);
+    expect(mockCache.set).toHaveBeenCalled();
+  });
+
+  it("getPaymentHeatmap omits the userId join when no userId is given", async () => {
+    mockCache.get.mockResolvedValue(null);
+    const qb = {
+      select: jest.fn().mockReturnThis(),
+      addSelect: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      innerJoin: jest.fn().mockReturnThis(),
+      groupBy: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      getRawMany: jest.fn().mockResolvedValue([]),
+    };
+    mockPaymentRepository.createQueryBuilder.mockReturnValue(qb);
+
+    await service.getPaymentHeatmap({});
+
+    expect(qb.innerJoin).not.toHaveBeenCalled();
+  });
+
+  // BE-201
+  it("getTimeDistribution returns cached result when available", async () => {
+    mockCache.get.mockResolvedValue([{ label: "Mon", count: 3, amount: 90 }]);
+
+    const result = await service.getTimeDistribution({});
+    expect(result).toEqual([{ label: "Mon", count: 3, amount: 90 }]);
+    expect(mockCache.get).toHaveBeenCalled();
+  });
+
+  it("getTimeDistribution maps day-of-week numbers to Sun..Sat labels and caches result", async () => {
+    mockCache.get.mockResolvedValue(null);
+
+    const qb = {
+      select: jest.fn().mockReturnThis(),
+      addSelect: jest.fn().mockReturnThis(),
+      where: jest.fn().mockReturnThis(),
+      andWhere: jest.fn().mockReturnThis(),
+      innerJoin: jest.fn().mockReturnThis(),
+      groupBy: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      getRawMany: jest.fn().mockResolvedValue([
+        { dow: "0", count: "5", amount: "120.00" },
+        { dow: "1", count: "2", amount: "40.00" },
+        { dow: "6", count: "1", amount: "10.00" },
+      ]),
+    };
+    mockPaymentRepository.createQueryBuilder.mockReturnValue(qb);
+
+    const result = await service.getTimeDistribution({
+      dateFrom: "2026-01-01",
+      dateTo: "2026-01-31",
+    });
+
+    expect(result).toEqual([
+      { label: "Sun", count: 5, amount: 120 },
+      { label: "Mon", count: 2, amount: 40 },
+      { label: "Sat", count: 1, amount: 10 },
+    ]);
+    expect(mockCache.set).toHaveBeenCalled();
+  });
 });

@@ -16,6 +16,16 @@ export class AnalyticsController {
     return this.analyticsService.getCategoryBreakdown(query);
   }
 
+  @Get("payment-heatmap")
+  async getPaymentHeatmap(@Query() query: SpendingTrendsDto) {
+    return this.analyticsService.getPaymentHeatmap(query);
+  }
+
+  @Get("time-distribution")
+  async getTimeDistribution(@Query() query: SpendingTrendsDto) {
+    return this.analyticsService.getTimeDistribution(query);
+  }
+
   @Get("top-partners")
   async getTopPartners(
     @Query("dateFrom") dateFrom?: string,

@@ -76,8 +76,8 @@ async function fetchLive(range?: DateRange): Promise<AnalyticsData> {
     apiClient.get<CategoryBreakdown[]>("/api/analytics/category-breakdown", { params }),
     apiClient.get<TopPartner[]>("/api/analytics/top-partners", { params }),
     Promise.resolve({ data: MOCK_DEBT_BALANCES }),
-    Promise.resolve({ data: MOCK_HEATMAP }),
-    Promise.resolve({ data: MOCK_TIME_DISTRIBUTION }),
+    apiClient.get<HeatmapCell[]>("/api/analytics/payment-heatmap", { params }),
+    apiClient.get<TimeDistribution[]>("/api/analytics/time-distribution", { params }),
   ]);
   return {
     spendingTrends: spendingTrends.data,
