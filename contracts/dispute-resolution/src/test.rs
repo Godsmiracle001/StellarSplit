@@ -4,6 +4,7 @@ use crate::types::{DisputeResult, DisputeStatus};
 use crate::{DisputeContract, DisputeContractClient};
 use soroban_sdk::token::{Client as TokenClient, StellarAssetClient as TokenAdminClient};
 use soroban_sdk::{
+    contract, contracterror, contractimpl,
     testutils::{Address as _, Ledger},
     Address, Env, Map, String,
 };
@@ -70,8 +71,7 @@ fn setup() -> (
     let dispute_id = env.register_contract(None, DisputeContract);
     let dispute_client = DisputeContractClient::new(&env, &dispute_id);
 
-    // ADDED: initialize the dispute contract with the admin
-    dispute_client.initialize(&admin);
+    dispute_client.initialize(&admin, &escrow_contract_id);
 
     (
         env,
@@ -85,6 +85,30 @@ fn setup() -> (
         escrow_split_id,
         admin,
     )
+}
+
+#[contracterror]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum FailingEscrowError {
+    SettlementFailed = 1,
+}
+
+#[contract]
+pub struct FailingEscrowContract;
+
+#[contractimpl]
+impl FailingEscrowContract {
+    pub fn get_creator(env: Env, _escrow_split_id: u64) -> Address {
+        env.current_contract_address()
+    }
+
+    pub fn release_funds(_env: Env, _escrow_split_id: u64) -> Result<(), FailingEscrowError> {
+        Err(FailingEscrowError::SettlementFailed)
+    }
+
+    pub fn reverse_split(_env: Env, _escrow_split_id: u64) -> Result<(), FailingEscrowError> {
+        Err(FailingEscrowError::SettlementFailed)
+    }
 }
 
 #[test]
@@ -117,6 +141,72 @@ fn test_raise_dispute_records_voting_state() {
     assert_eq!(dispute.votes_for, 0);
     assert_eq!(dispute.votes_against, 0);
     assert_eq!(dispute.voting_ends_at, 1000 + 604_800);
+}
+
+#[test]
+fn test_raise_dispute_rejects_untrusted_escrow_contract() {
+    let (
+        env,
+        client,
+        _escrow,
+        _trusted_escrow_contract,
+        _token_client,
+        _creator,
+        _participant,
+        _treasury,
+        escrow_split_id,
+        _admin,
+    ) = setup();
+    env.ledger().with_mut(|l| l.timestamp = 1000);
+
+    let raiser = Address::generate(&env);
+    let untrusted_escrow_contract = Address::generate(&env);
+
+    let res = client.try_raise_dispute(
+        &String::from_str(&env, "split_untrusted_001"),
+        &raiser,
+        &String::from_str(&env, "Untrusted escrow should not be accepted"),
+        &untrusted_escrow_contract,
+        &escrow_split_id,
+    );
+
+    assert!(matches!(res, Err(Ok(Error::UntrustedEscrowContract))));
+}
+
+#[test]
+fn test_resolve_dispute_surfaces_failed_escrow_action() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let failing_escrow_contract = env.register_contract(None, FailingEscrowContract);
+    let dispute_contract = env.register_contract(None, DisputeContract);
+    let client = DisputeContractClient::new(&env, &dispute_contract);
+    client.initialize(&admin, &failing_escrow_contract);
+
+    env.ledger().with_mut(|l| l.timestamp = 1000);
+
+    let raiser = Address::generate(&env);
+    let voter = Address::generate(&env);
+    let escrow_split_id = 42u64;
+
+    let id = client.raise_dispute(
+        &String::from_str(&env, "split_failed_action_001"),
+        &raiser,
+        &String::from_str(&env, "Escrow action fails downstream"),
+        &failing_escrow_contract,
+        &escrow_split_id,
+    );
+
+    client.vote_on_dispute(&id, &voter, &false);
+    env.ledger().with_mut(|l| l.timestamp = 1000 + 604_801);
+
+    let res = client.try_resolve_dispute(&id, &failing_escrow_contract);
+    assert!(matches!(res, Err(Ok(Error::EscrowActionFailed))));
+
+    let dispute = client.get_dispute(&id);
+    assert_eq!(dispute.status, DisputeStatus::Voting);
+    assert_eq!(dispute.result, None);
 }
 
 #[test]

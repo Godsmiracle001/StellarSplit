@@ -67,3 +67,16 @@ pub fn get_admin(env: &Env) -> Address {
 pub fn has_admin(env: &Env) -> bool {
     env.storage().instance().has(&DataKey::Admin)
 }
+
+pub fn set_trusted_escrow_contract(env: &Env, escrow_contract: &Address) {
+    env.storage()
+        .instance()
+        .set(&DataKey::TrustedEscrowContract, escrow_contract);
+}
+
+pub fn is_trusted_escrow_contract(env: &Env, escrow_contract: &Address) -> bool {
+    env.storage()
+        .instance()
+        .get::<_, Address>(&DataKey::TrustedEscrowContract)
+        .is_some_and(|trusted| trusted == *escrow_contract)
+}

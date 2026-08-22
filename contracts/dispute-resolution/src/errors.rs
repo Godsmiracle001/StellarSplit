@@ -14,4 +14,6 @@ pub enum Error {
     SplitNotFound = 9,
     /// Resolver is not authorized to finalize escrow actions for this dispute.
     UnauthorizedResolver = 10,
+    UntrustedEscrowContract = 11,
+    EscrowActionFailed = 12,
 }
