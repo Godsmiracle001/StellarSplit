@@ -95,6 +95,8 @@ export class AnalyticsService {
       "analytics:spending-trends",
       "analytics:category-breakdown",
       "analytics:top-partners",
+      "analytics:payment-heatmap",
+      "analytics:time-distribution",
     ];
     const store: any = (this.cacheManager as any).store;
     const client = store?.getClient
@@ -191,6 +193,103 @@ export class AnalyticsService {
     const raw = await qb.getRawMany();
     const result = raw.map((r: any) => ({
       category: r.category,
+      amount: Number(r.amount),
+    }));
+
+    await this.cacheManager.set(cacheKey, result, 300);
+    return result;
+  }
+
+  /**
+   * BE-201: daily payment counts/totals for the activity heatmap
+   * (frontend/src/components/Analytics/PaymentHeatmap.tsx). Groups
+   * confirmed payments by calendar day, matching the `SpendingTrendsDto`
+   * filter pattern already used by getSpendingTrends/getCategoryBreakdown.
+   */
+  async getPaymentHeatmap(dto: SpendingTrendsDto) {
+    const from = dto.dateFrom ? new Date(dto.dateFrom) : null;
+    const to = dto.dateTo ? new Date(dto.dateTo) : null;
+
+    const cacheKey = `analytics:payment-heatmap:${dto.userId || "all"}:${dto.dateFrom || "null"}:${dto.dateTo || "null"}`;
+    const cached = await this.cacheManager.get(cacheKey);
+    if (cached) return cached;
+
+    const qb = this.paymentRepository
+      .createQueryBuilder("payment")
+      .select(`date_trunc('day', payment."createdAt")`, "date")
+      .addSelect("COUNT(*)", "count")
+      .addSelect("SUM(payment.amount::numeric)", "total")
+      .where("payment.status = :status", { status: "confirmed" });
+
+    if (from) {
+      qb.andWhere('payment."createdAt" >= :from', { from: from.toISOString() });
+    }
+    if (to) {
+      qb.andWhere('payment."createdAt" <= :to', { to: to.toISOString() });
+    }
+    if (dto.userId) {
+      qb.innerJoin(
+        Participant,
+        "participant",
+        "participant.id = payment.participantId",
+      ).andWhere("participant.userId = :userId", { userId: dto.userId });
+    }
+
+    qb.groupBy("date").orderBy("date", "ASC");
+
+    const raw = await qb.getRawMany();
+    const result = raw.map((r) => ({
+      date: new Date(r.date).toISOString().slice(0, 10),
+      count: Number(r.count),
+      total: Number(r.total),
+    }));
+
+    await this.cacheManager.set(cacheKey, result, 300);
+    return result;
+  }
+
+  /**
+   * BE-201: payment counts/totals grouped by day of week for
+   * frontend/src/components/Analytics/TimeAnalysis.tsx. `label` matches
+   * the three-letter abbreviations the frontend mock already used
+   * (Sun..Sat), so no frontend mapping is required.
+   */
+  async getTimeDistribution(dto: SpendingTrendsDto) {
+    const from = dto.dateFrom ? new Date(dto.dateFrom) : null;
+    const to = dto.dateTo ? new Date(dto.dateTo) : null;
+
+    const cacheKey = `analytics:time-distribution:${dto.userId || "all"}:${dto.dateFrom || "null"}:${dto.dateTo || "null"}`;
+    const cached = await this.cacheManager.get(cacheKey);
+    if (cached) return cached;
+
+    const qb = this.paymentRepository
+      .createQueryBuilder("payment")
+      .select(`EXTRACT(DOW FROM payment."createdAt")`, "dow")
+      .addSelect("COUNT(*)", "count")
+      .addSelect("SUM(payment.amount::numeric)", "amount")
+      .where("payment.status = :status", { status: "confirmed" });
+
+    if (from) {
+      qb.andWhere('payment."createdAt" >= :from', { from: from.toISOString() });
+    }
+    if (to) {
+      qb.andWhere('payment."createdAt" <= :to', { to: to.toISOString() });
+    }
+    if (dto.userId) {
+      qb.innerJoin(
+        Participant,
+        "participant",
+        "participant.id = payment.participantId",
+      ).andWhere("participant.userId = :userId", { userId: dto.userId });
+    }
+
+    qb.groupBy("dow").orderBy("dow", "ASC");
+
+    const raw = await qb.getRawMany();
+    const DOW_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    const result = raw.map((r) => ({
+      label: DOW_LABELS[Number(r.dow)],
+      count: Number(r.count),
       amount: Number(r.amount),
     }));
 
