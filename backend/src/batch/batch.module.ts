@@ -13,12 +13,14 @@ import { ScheduledBatchProcessor } from "./processors/scheduled-batch.processor"
 import { BatchProgressService } from "./batch-progress.service";
 import { BatchEventsService } from "./batch-events.service";
 import { PaymentsModule } from "../payments/payments.module";
+import { SplitsModule } from "../modules/splits/splits.module";
 import { QueueJobPolicy, JobPolicyTier } from "../common/queue-job-policy";
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([BatchJob, BatchOperation]),
     PaymentsModule,
+    SplitsModule,
     BullModule.registerQueue(
       QueueJobPolicy.forQueue('batch_splits', JobPolicyTier.CRITICAL, {
         removeOnComplete: false,
