@@ -45,11 +45,14 @@ pub struct DisputeContract;
 #[contractimpl]
 impl DisputeContract {
     /// Set the contract admin. Must be called once after deployment.
-    pub fn initialize(env: Env, admin: Address) -> Result<(), Error> {
+    pub fn initialize(env: Env, admin: Address, escrow_contract: Address) -> Result<(), Error> {
+        admin.require_auth();
+
         if storage::has_admin(&env) {
             return Err(Error::AlreadyExists);
         }
         storage::set_admin(&env, &admin);
+        storage::set_trusted_escrow_contract(&env, &escrow_contract);
         Ok(())
     }
 
@@ -63,6 +66,10 @@ impl DisputeContract {
         escrow_split_id: u64,
     ) -> Result<String, Error> {
         raiser.require_auth();
+
+        if !storage::is_trusted_escrow_contract(&env, &escrow_contract) {
+            return Err(Error::UntrustedEscrowContract);
+        }
 
         let now = env.ledger().timestamp();
         let dispute_id = generate_dispute_id(&env, &split_id);
@@ -175,6 +182,10 @@ impl DisputeContract {
             DisputeResult::Tied
         };
 
+        if !storage::is_trusted_escrow_contract(&env, &dispute.escrow_contract) {
+            return Err(Error::UntrustedEscrowContract);
+        }
+
         // Auth boundary: only the escrow creator (owner) is allowed to finalize the escrow action.
         resolver.require_auth();
 
@@ -195,7 +206,7 @@ impl DisputeContract {
             action,
             &dispute.escrow_contract,
             dispute.escrow_split_id,
-        );
+        )?;
 
         let result_code = match result {
             DisputeResult::UpheldForRaiser => 0u32,
