@@ -3,8 +3,8 @@
 #[cfg(test)]
 mod tests {
     use soroban_sdk::{
-        testutils::Address as _, testutils::Ledger as _, Address, Env, String as SorobanString,
-        Vec as SorobanVec,
+        testutils::{Address as _, Ledger as _, MockAuth, MockAuthInvoke},
+        Address, Env, IntoVal, String as SorobanString, Vec as SorobanVec,
     };
 
     use crate::types::{Participant, SplitType};
@@ -465,6 +465,8 @@ mod tests {
     fn test_use_template_success() {
         let (env, creator, client) = setup();
 
+        let caller = Address::generate(&env);
+
         let name = SorobanString::from_str(&env, "Usable Template");
         let participants = create_equal_split_participants(&env, 2);
 
@@ -472,12 +474,14 @@ mod tests {
             client.create_template(&creator, &name, &SplitType::Equal, &participants, &None);
 
         let split_id = 1000u64;
-        let _ = client.use_template(&template_id, &split_id);
-    }
 
+        let _ = client.use_template(&caller, &template_id, &split_id);
+    }
     #[test]
     fn test_use_template_increments_use_count() {
         let (env, creator, client) = setup();
+
+        let caller = Address::generate(&env);
 
         let name = SorobanString::from_str(&env, "Usable Template Count");
         let participants = create_equal_split_participants(&env, 2);
@@ -489,7 +493,7 @@ mod tests {
         assert_eq!(before.use_count, 0);
 
         let split_id = 1000u64;
-        let _ = client.use_template(&template_id, &split_id);
+        let _ = client.use_template(&caller, &template_id, &split_id);
 
         let after = client.get_template(&template_id);
         assert_eq!(after.use_count, 1);
@@ -498,6 +502,8 @@ mod tests {
     #[test]
     fn test_use_template_respects_max_uses() {
         let (env, creator, client) = setup();
+
+        let caller = Address::generate(&env);
 
         let name = SorobanString::from_str(&env, "Limited Use Template");
         let participants = create_equal_split_participants(&env, 2);
@@ -511,9 +517,11 @@ mod tests {
         );
 
         let split_id = 1000u64;
-        let _ = client.use_template(&template_id, &split_id);
 
-        let result = client.try_use_template(&template_id, &1001u64);
+        let _ = client.use_template(&caller, &template_id, &split_id);
+
+        let result = client.try_use_template(&caller, &template_id, &1001u64);
+
         assert!(result.is_err());
         assert_eq!(result.unwrap_err(), Ok(crate::Error::TemplateLimitReached));
     }
@@ -521,11 +529,12 @@ mod tests {
     #[test]
     fn test_use_template_not_found_returns_error() {
         let (env, _creator, client) = setup();
+        let caller = Address::generate(&env);
 
         let fake_template_id = SorobanString::from_str(&env, "NONEXISTENT_TEMPLATE");
         let split_id = 1000u64;
 
-        let result = client.try_use_template(&fake_template_id, &split_id);
+        let result = client.try_use_template(&caller, &fake_template_id, &split_id);
         assert!(result.is_err());
         assert_eq!(result.unwrap_err(), Ok(crate::Error::TemplateNotFound));
     }
@@ -533,6 +542,7 @@ mod tests {
     #[test]
     fn test_use_template_emits_event() {
         let (env, creator, client) = setup();
+        let caller = Address::generate(&env);
 
         let name = SorobanString::from_str(&env, "Event Template");
         let participants = create_equal_split_participants(&env, 2);
@@ -543,7 +553,7 @@ mod tests {
         let split_id = 1000u64;
 
         // Use the template and emit event
-        let _ = client.use_template(&template_id, &split_id);
+        let _ = client.use_template(&caller, &template_id, &split_id);
 
         // In practice, you'd verify the event was emitted
         // This is a smoke test that the function completes
@@ -563,6 +573,66 @@ mod tests {
     // ============================================
     // Authorization Tests
     // ============================================
+
+    #[test]
+    fn test_use_template_requires_caller_auth() {
+        let env = Env::default();
+
+        env.ledger().with_mut(|l| {
+            l.sequence_number = 500_000;
+        });
+
+        let contract_id = env.register_contract(None, SplitTemplateContract);
+        let client = SplitTemplateContractClient::new(&env, &contract_id);
+
+        let creator = Address::generate(&env);
+        let caller = Address::generate(&env);
+
+        let name = SorobanString::from_str(&env, "Authenticated Use Template");
+        let participants = create_equal_split_participants(&env, 2);
+
+        // Authorize only the creator for template creation.
+        env.mock_auths(&[MockAuth {
+            address: &creator,
+            invoke: &MockAuthInvoke {
+                contract: &contract_id,
+                fn_name: "create_template",
+                args: (
+                    creator.clone(),
+                    name.clone(),
+                    SplitType::Equal,
+                    participants.clone(),
+                    Some(1u32),
+                )
+                    .into_val(&env),
+                sub_invokes: &[],
+            },
+        }]);
+
+        let template_id = client.create_template(
+            &creator,
+            &name,
+            &SplitType::Equal,
+            &participants,
+            &Some(1u32),
+        );
+
+        // Authorize the caller specifically for use_template.
+        env.mock_auths(&[MockAuth {
+            address: &caller,
+            invoke: &MockAuthInvoke {
+                contract: &contract_id,
+                fn_name: "use_template",
+                args: (caller.clone(), template_id.clone(), 1000u64).into_val(&env),
+                sub_invokes: &[],
+            },
+        }]);
+
+        client.use_template(&caller, &template_id, &1000u64);
+
+        let template = client.get_template(&template_id);
+        assert_eq!(template.use_count, 1);
+    }
 
     #[test]
     fn test_create_template_requires_auth() {
@@ -683,6 +753,7 @@ mod tests {
     #[test]
     fn test_apply_template_increments_use_count() {
         let (env, creator, client) = setup();
+        let caller = Address::generate(&env);
 
         let name = SorobanString::from_str(&env, "Count Template");
         let participants = create_equal_split_participants(&env, 2);
@@ -695,7 +766,7 @@ mod tests {
         assert_eq!(before.use_count, 0);
 
         // First application
-        let after_first = client.apply_template(&template_id, &1u64);
+        let after_first = client.apply_template(&caller, &template_id, &1u64);
         assert_eq!(after_first.use_count, 1);
 
         // Persisted value should reflect increment
@@ -703,7 +774,7 @@ mod tests {
         assert_eq!(stored.use_count, 1);
 
         // Second application
-        let after_second = client.apply_template(&template_id, &2u64);
+        let after_second = client.apply_template(&caller, &template_id, &2u64);
         assert_eq!(after_second.use_count, 2);
 
         let stored2 = client.get_template(&template_id);
@@ -713,6 +784,7 @@ mod tests {
     #[test]
     fn test_apply_template_respects_max_uses() {
         let (env, creator, client) = setup();
+        let caller = Address::generate(&env);
 
         let name = SorobanString::from_str(&env, "Limited Template");
         let participants = create_equal_split_participants(&env, 2);
@@ -727,14 +799,14 @@ mod tests {
         );
 
         // First two applications should succeed
-        let r1 = client.apply_template(&template_id, &1u64);
+        let r1 = client.apply_template(&caller, &template_id, &1u64);
         assert_eq!(r1.use_count, 1);
 
-        let r2 = client.apply_template(&template_id, &2u64);
+        let r2 = client.apply_template(&caller, &template_id, &2u64);
         assert_eq!(r2.use_count, 2);
 
         // Third application must return TemplateLimitReached
-        let result = client.try_apply_template(&template_id, &3u64);
+        let result = client.try_apply_template(&caller, &template_id, &3u64);
         assert!(result.is_err());
         assert_eq!(result.unwrap_err(), Ok(crate::Error::TemplateLimitReached));
     }
@@ -742,6 +814,7 @@ mod tests {
     #[test]
     fn test_apply_template_unlimited_when_no_max_uses() {
         let (env, creator, client) = setup();
+        let caller = Address::generate(&env);
 
         let name = SorobanString::from_str(&env, "Unlimited Template");
         let participants = create_equal_split_participants(&env, 2);
@@ -751,7 +824,7 @@ mod tests {
 
         // Apply 10 times — should never hit a limit
         for i in 0u64..10 {
-            let result = client.apply_template(&template_id, &i);
+            let result = client.apply_template(&caller, &template_id, &i);
             assert_eq!(result.use_count, (i + 1) as u32);
         }
     }
@@ -759,10 +832,11 @@ mod tests {
     #[test]
     fn test_apply_template_missing_template_returns_error() {
         let (env, _creator, client) = setup();
+        let caller = Address::generate(&env);
 
         let nonexistent_id = SorobanString::from_str(&env, "DOES_NOT_EXIST");
 
-        let result = client.try_apply_template(&nonexistent_id, &1u64);
+        let result = client.try_apply_template(&caller, &nonexistent_id, &1u64);
         assert!(result.is_err());
         assert_eq!(result.unwrap_err(), Ok(crate::Error::TemplateNotFound));
     }
@@ -770,6 +844,7 @@ mod tests {
     #[test]
     fn test_apply_template_max_uses_zero_always_errors() {
         let (env, creator, client) = setup();
+        let caller = Address::generate(&env);
 
         let name = SorobanString::from_str(&env, "Zero Max Template");
         let participants = create_equal_split_participants(&env, 2);
@@ -783,8 +858,105 @@ mod tests {
             &Some(0u32),
         );
 
-        let result = client.try_apply_template(&template_id, &1u64);
+        let result = client.try_apply_template(&caller, &template_id, &1u64);
         assert!(result.is_err());
         assert_eq!(result.unwrap_err(), Ok(crate::Error::TemplateLimitReached));
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_use_template_rejects_unauthorized_caller() {
+        let env = Env::default();
+
+        env.ledger().with_mut(|l| {
+            l.sequence_number = 500_000;
+        });
+
+        let contract_id = env.register_contract(None, SplitTemplateContract);
+        let client = SplitTemplateContractClient::new(&env, &contract_id);
+
+        let creator = Address::generate(&env);
+        let unauthorized_caller = Address::generate(&env);
+
+        let name = SorobanString::from_str(&env, "Unauthorized Use Template");
+        let participants = create_equal_split_participants(&env, 2);
+
+        // Only authorize creation.
+        env.mock_auths(&[MockAuth {
+            address: &creator,
+            invoke: &MockAuthInvoke {
+                contract: &contract_id,
+                fn_name: "create_template",
+                args: (
+                    creator.clone(),
+                    name.clone(),
+                    SplitType::Equal,
+                    participants.clone(),
+                    Some(1u32),
+                )
+                    .into_val(&env),
+                sub_invokes: &[],
+            },
+        }]);
+
+        let template_id = client.create_template(
+            &creator,
+            &name,
+            &SplitType::Equal,
+            &participants,
+            &Some(1u32),
+        );
+
+        // No authorization is provided for unauthorized_caller.
+        //
+        // caller.require_auth() inside use_template must reject this call.
+        client.use_template(&unauthorized_caller, &template_id, &1000u64);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_apply_template_rejects_unauthorized_caller() {
+        let env = Env::default();
+
+        env.ledger().with_mut(|l| {
+            l.sequence_number = 500_000;
+        });
+
+        let contract_id = env.register_contract(None, SplitTemplateContract);
+        let client = SplitTemplateContractClient::new(&env, &contract_id);
+
+        let creator = Address::generate(&env);
+        let unauthorized_caller = Address::generate(&env);
+
+        let name = SorobanString::from_str(&env, "Unauthorized Apply Template");
+        let participants = create_equal_split_participants(&env, 2);
+
+        env.mock_auths(&[MockAuth {
+            address: &creator,
+            invoke: &MockAuthInvoke {
+                contract: &contract_id,
+                fn_name: "create_template",
+                args: (
+                    creator.clone(),
+                    name.clone(),
+                    SplitType::Equal,
+                    participants.clone(),
+                    Some(1u32),
+                )
+                    .into_val(&env),
+                sub_invokes: &[],
+            },
+        }]);
+
+        let template_id = client.create_template(
+            &creator,
+            &name,
+            &SplitType::Equal,
+            &participants,
+            &Some(1u32),
+        );
+
+        // No authorization for the caller.
+        client.apply_template(&unauthorized_caller, &template_id, &1000u64);
     }
 }
