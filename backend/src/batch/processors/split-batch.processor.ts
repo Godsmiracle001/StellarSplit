@@ -8,6 +8,8 @@ import { BatchJob, BatchJobStatus } from "../entities/batch-job.entity";
 import { BatchOperation, BatchOperationStatus } from "../entities/batch-operation.entity";
 import { BatchProgressService } from "../batch-progress.service";
 import { BatchJobData } from "../batch.service";
+import { SplitsService } from "../../modules/splits/splits.service";
+import { CreateSplitDto } from "../../modules/splits/dto/split.dto";
 
 interface SplitPayload {
   totalAmount: number;
@@ -29,6 +31,7 @@ export class SplitBatchProcessor {
     @InjectRepository(BatchOperation)
     private batchOperationRepository: Repository<BatchOperation>,
     private batchProgressService: BatchProgressService,
+    private readonly splitsService: SplitsService,
   ) {}
 
   @Process("process")
@@ -124,7 +127,7 @@ export class SplitBatchProcessor {
       // Validate payload
       this.validatePayload(payload);
 
-      // Simulate split creation (replace with actual service call)
+      // Create the split via SplitsService
       const result = await this.createSplit(payload);
 
       // Mark as completed
@@ -167,16 +170,31 @@ export class SplitBatchProcessor {
   }
 
   /**
-   * Create a split (placeholder for actual implementation)
+   * Create a real split via SplitsService
    */
   private async createSplit(payload: SplitPayload): Promise<Record<string, any>> {
-    // TODO: Integrate with actual split creation service
-    // For now, simulate successful creation
-    return {
-      splitId: `split_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    const createSplitDto: CreateSplitDto = {
       totalAmount: payload.totalAmount,
-      participantCount: payload.participants.length,
-      createdAt: new Date().toISOString(),
+      description: payload.description,
+      creatorWalletAddress: payload.creatorWalletAddress || '',
+      preferredCurrency: payload.preferredCurrency,
+      participants: payload.participants.map((p) => ({
+        userId: p.userId,
+        amountOwed: p.amount,
+        walletAddress: p.walletAddress,
+      })),
+    };
+
+    const split = await this.splitsService.createSplit(createSplitDto);
+
+    return {
+      splitId: split.id,
+      totalAmount: Number(split.totalAmount),
+      participantCount: split.participants?.length ?? payload.participants.length,
+      status: split.status,
+      createdAt: split.createdAt instanceof Date
+        ? split.createdAt.toISOString()
+        : String(split.createdAt),
     };
   }
 
