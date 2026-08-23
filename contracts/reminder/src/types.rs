@@ -1,4 +1,4 @@
-use soroban_sdk::{contracttype, Address, String, Vec};
+use soroban_sdk::{contracttype, Address, Vec};
 
 #[contracttype]
 #[derive(Clone, Debug)]
@@ -25,6 +25,8 @@ impl EscrowParticipant {
 #[contracttype]
 #[derive(Clone, Debug)]
 pub struct ReminderEscrow {
-    pub split_id: String,
+    pub creator: Address,
+    pub split_escrow_contract: Address,
+    pub split_id: u64,
     pub participants: Vec<EscrowParticipant>,
 }

@@ -6,6 +6,8 @@ describe("AnalyticsController", () => {
   let controller: AnalyticsController;
   const mockService = {
     getSpendingTrends: jest.fn(),
+    getPaymentHeatmap: jest.fn(),
+    getTimeDistribution: jest.fn(),
     enqueueExport: jest.fn(),
     getReportStatus: jest.fn(),
   } as any;
@@ -28,6 +30,25 @@ describe("AnalyticsController", () => {
     const result = await controller.getSpendingTrends({});
     expect(result).toEqual([{ period: "2026-01-01", totalSpent: 100 }]);
     expect(mockService.getSpendingTrends).toHaveBeenCalled();
+  });
+
+  // BE-201
+  it("delegates to service.getPaymentHeatmap", async () => {
+    mockService.getPaymentHeatmap.mockResolvedValue([
+      { date: "2026-01-01", count: 2, total: 55 },
+    ]);
+    const result = await controller.getPaymentHeatmap({});
+    expect(result).toEqual([{ date: "2026-01-01", count: 2, total: 55 }]);
+    expect(mockService.getPaymentHeatmap).toHaveBeenCalled();
+  });
+
+  it("delegates to service.getTimeDistribution", async () => {
+    mockService.getTimeDistribution.mockResolvedValue([
+      { label: "Mon", count: 4, amount: 120 },
+    ]);
+    const result = await controller.getTimeDistribution({});
+    expect(result).toEqual([{ label: "Mon", count: 4, amount: 120 }]);
+    expect(mockService.getTimeDistribution).toHaveBeenCalled();
   });
 
   it("delegates export request to service.enqueueExport", async () => {

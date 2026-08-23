@@ -19,6 +19,8 @@ pub enum MultisigStatus {
 pub struct MultisigSplit {
     /// Unique split identifier
     pub split_id: String,
+    /// Address that created (initiated) this split; recorded for accountability
+    pub creator: Address,
     /// Required number of signatures
     pub required_signatures: u32,
     /// Current number of signatures collected

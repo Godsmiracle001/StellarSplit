@@ -1,4 +1,5 @@
 use crate::errors::Error;
+use crate::storage;
 use crate::types::DisputeResult;
 use soroban_sdk::{vec, Address, Env, IntoVal, Symbol, Val};
 
@@ -29,18 +30,27 @@ pub fn execute_action(
     action: DisputeAction,
     escrow_contract: &Address,
     escrow_split_id: u64,
-) {
-    match action {
+) -> Result<(), Error> {
+    if !storage::is_trusted_escrow_contract(env, escrow_contract) {
+        return Err(Error::UntrustedEscrowContract);
+    }
+
+    let (sym, args) = match action {
         DisputeAction::ReverseSplit => {
             let sym = Symbol::new(env, "reverse_split");
             let args: soroban_sdk::Vec<Val> = vec![env, escrow_split_id.into_val(env)];
-            env.invoke_contract::<()>(escrow_contract, &sym, args);
+            (sym, args)
         }
         DisputeAction::ReleaseFunds => {
             let sym = Symbol::new(env, "release_funds");
             let args: soroban_sdk::Vec<Val> = vec![env, escrow_split_id.into_val(env)];
-            env.invoke_contract::<()>(escrow_contract, &sym, args);
+            (sym, args)
         }
+    };
+
+    match env.try_invoke_contract::<(), Error>(escrow_contract, &sym, args) {
+        Ok(Ok(())) => Ok(()),
+        Ok(Err(_)) | Err(_) => Err(Error::EscrowActionFailed),
     }
 }
 

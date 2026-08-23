@@ -4,8 +4,8 @@ extern crate std;
 
 use crate::{MultisigError, MultisigSplitsContract, MultisigSplitsContractClient, MultisigStatus};
 use soroban_sdk::{
-    testutils::{Address as _, Ledger as _},
-    Address, Env, String,
+    testutils::{Address as _, Ledger as _, MockAuth, MockAuthInvoke},
+    Address, Env, IntoVal, String, Vec,
 };
 
 /// Helper to create a test environment and contract client
@@ -39,7 +39,7 @@ fn test_create_multisig_split() {
     client.initialize(&admin);
 
     // Create a multi-sig split
-    client.create_multisig_split(&split_id, &3, &3600); // 3 sigs required, 1 hour lock
+    client.create_multisig_split(&admin, &split_id, &3, &3600); // 3 sigs required, 1 hour lock
 
     // Check split info
     let split = client.get_split_info(&split_id);
@@ -51,34 +51,98 @@ fn test_create_multisig_split() {
 }
 
 #[test]
-fn test_create_duplicate_split() {
-    let (_env, admin, client) = setup_test();
-    let split_id = String::from_str(&_env, "split-001");
+fn test_create_duplicate_split_is_rejected_not_overwritten() {
+    let (env, admin, client) = setup_test();
+    let split_id = String::from_str(&env, "split-001");
+    let creator = Address::generate(&env);
+    let squatter = Address::generate(&env);
 
     client.initialize(&admin);
 
     // Create first split
-    client.create_multisig_split(&split_id, &2, &1800);
+    client.create_multisig_split(&creator, &split_id, &2, &1800);
 
-    // Try to create duplicate - will panic in real scenario
-    // For now, just test that the first creation worked
+    // A second creation attempt against the same (caller-supplied) split_id,
+    // even from a different address, must be rejected rather than silently
+    // overwriting the original entry.
+    let result = client.try_create_multisig_split(&squatter, &split_id, &5, &7200);
+    assert_eq!(result, Err(Ok(MultisigError::SplitAlreadyExists)));
+
+    // Original split data (and creator) must remain unchanged.
+    let split = client.get_split_info(&split_id);
+    assert_eq!(split.creator, creator);
+    assert_eq!(split.required_signatures, 2);
+    assert_eq!(split.time_lock, 1800);
+}
+
+#[test]
+fn test_create_multisig_split_records_creator() {
+    let (env, admin, client) = setup_test();
+    let split_id = String::from_str(&env, "split-001");
+    let creator = Address::generate(&env);
+
+    client.initialize(&admin);
+    client.create_multisig_split(&creator, &split_id, &2, &1800);
+
+    // Creator is stored on the split record...
+    let split = client.get_split_info(&split_id);
+    assert_eq!(split.creator, creator);
+
+    // ...and independently queryable.
+    assert_eq!(client.get_creator(&split_id), creator);
+}
+
+#[test]
+#[should_panic(expected = "HostError: Error(Auth, InvalidAction)")]
+fn test_create_multisig_split_requires_creator_auth() {
+    let (env, admin, client) = setup_test();
+    let split_id = String::from_str(&env, "split-001");
+    let creator = Address::generate(&env);
+    let attacker = Address::generate(&env);
+
+    client.initialize(&admin);
+
+    // Mock an authorization from a different address than the declared
+    // `creator`, so the contract's `creator.require_auth()` check must fail.
+    let mut args = Vec::new(&env);
+    args.push_back(creator.into_val(&env));
+    args.push_back(split_id.into_val(&env));
+    args.push_back(2u32.into_val(&env));
+    args.push_back(1800u64.into_val(&env));
+    env.mock_auths(&[MockAuth {
+        address: &attacker,
+        invoke: &MockAuthInvoke {
+            contract: &client.address,
+            fn_name: "create_multisig_split",
+            args,
+            sub_invokes: &[],
+        },
+    }]);
+
+    client.create_multisig_split(&creator, &split_id, &2, &1800);
 }
 
 #[test]
 fn test_invalid_threshold() {
     let (env, admin, client) = setup_test();
-    let _split_id = String::from_str(&env, "split-001");
+    let split_id = String::from_str(&env, "split-001");
+    let creator = Address::generate(&env);
 
     client.initialize(&admin);
 
-    // Try to create with 0 required signatures
-    // This would panic in a real scenario, but for testing we'll skip
-    // let result = client.create_multisig_split(&split_id, &0, &1800);
-    // assert!(result.is_err());
+    // Zero required signatures is rejected.
+    let result = client.try_create_multisig_split(&creator, &split_id, &0, &1800);
+    assert_eq!(result, Err(Ok(MultisigError::InvalidThreshold)));
 
-    // Try to create with 0 time lock
-    // let result = client.create_multisig_split(&split_id, &2, &0);
-    // assert!(result.is_err());
+    // Zero time lock is rejected.
+    let result = client.try_create_multisig_split(&creator, &split_id, &2, &0);
+    assert_eq!(result, Err(Ok(MultisigError::InvalidThreshold)));
+
+    // Neither invalid attempt should have created the split (governance info
+    // falls back to its all-zero default when the split does not exist).
+    let governance = client.get_governance_info(&split_id);
+    assert_eq!(governance.num_signers, 0);
+    assert_eq!(governance.required_signatures, 0);
 }
 
 #[test]
@@ -109,7 +173,7 @@ fn test_sign_split() {
     let signer1 = Address::generate(&env);
 
     client.initialize(&admin);
-    client.create_multisig_split(&split_id, &2, &1800);
+    client.create_multisig_split(&admin, &split_id, &2, &1800);
 
     // First signature
     let can_execute = client.sign_split(&split_id, &signer1);
@@ -131,7 +195,7 @@ fn test_multiple_signatures() {
     let signer2 = Address::generate(&env);
 
     client.initialize(&admin);
-    client.create_multisig_split(&split_id, &2, &1800);
+    client.create_multisig_split(&admin, &split_id, &2, &1800);
 
     // First signature
     client.sign_split(&split_id, &signer1);
@@ -154,7 +218,7 @@ fn test_duplicate_signature() {
     let signer = Address::generate(&env);
 
     client.initialize(&admin);
-    client.create_multisig_split(&split_id, &2, &1800);
+    client.create_multisig_split(&admin, &split_id, &2, &1800);
 
     // First signature
     client.sign_split(&split_id, &signer);
@@ -173,7 +237,7 @@ fn test_execute_split_too_early() {
     let signer2 = Address::generate(&env);
 
     client.initialize(&admin);
-    client.create_multisig_split(&split_id, &2, &3600); // 1 hour lock
+    client.create_multisig_split(&admin, &split_id, &2, &3600); // 1 hour lock
 
     // Collect signatures
     client.sign_split(&split_id, &signer1);
@@ -192,7 +256,7 @@ fn test_execute_split_insufficient_signatures() {
     let signer = Address::generate(&env);
 
     client.initialize(&admin);
-    client.create_multisig_split(&split_id, &3, &1800);
+    client.create_multisig_split(&admin, &split_id, &3, &1800);
 
     // Only one signature
     client.sign_split(&split_id, &signer);
@@ -215,7 +279,7 @@ fn test_execute_split_success() {
     let signer3 = Address::generate(&env);
 
     client.initialize(&admin);
-    client.create_multisig_split(&split_id, &3, &1800);
+    client.create_multisig_split(&admin, &split_id, &3, &1800);
 
     // Collect all required signatures
     client.sign_split(&split_id, &signer1);
@@ -240,7 +304,7 @@ fn test_cancel_split() {
     let split_id = String::from_str(&env, "split-001");
 
     client.initialize(&admin);
-    client.create_multisig_split(&split_id, &2, &1800);
+    client.create_multisig_split(&admin, &split_id, &2, &1800);
 
     // Cancel split
     let reason = String::from_str(&env, "Emergency cancellation");
@@ -257,7 +321,7 @@ fn test_emergency_override() {
     let split_id = String::from_str(&env, "split-001");
 
     client.initialize(&admin);
-    client.create_multisig_split(&split_id, &3, &3600);
+    client.create_multisig_split(&admin, &split_id, &3, &3600);
 
     // Only one signature, time lock not expired
     let signer = Address::generate(&env);
@@ -279,7 +343,7 @@ fn test_can_execute_split() {
     let signer2 = Address::generate(&env);
 
     client.initialize(&admin);
-    client.create_multisig_split(&split_id, &2, &1800);
+    client.create_multisig_split(&admin, &split_id, &2, &1800);
 
     // Initially cannot execute
     assert!(!client.can_execute_split(&split_id));
@@ -323,7 +387,7 @@ fn test_add_signer() {
     let signer2 = Address::generate(&env);
 
     client.initialize(&admin);
-    client.create_multisig_split(&split_id, &2, &1800);
+    client.create_multisig_split(&admin, &split_id, &2, &1800);
 
     // Initially no signers
     let signers = client.get_signers(&split_id);
@@ -351,7 +415,7 @@ fn test_remove_signer() {
     let signer2 = Address::generate(&env);
 
     client.initialize(&admin);
-    client.create_multisig_split(&split_id, &2, &1800);
+    client.create_multisig_split(&admin, &split_id, &2, &1800);
 
     // Add signers
     client.add_signer(&split_id, &signer1);
@@ -375,7 +439,7 @@ fn test_cannot_remove_last_signer() {
     let signer = Address::generate(&env);
 
     client.initialize(&admin);
-    client.create_multisig_split(&split_id, &1, &1800);
+    client.create_multisig_split(&admin, &split_id, &1, &1800);
 
     // Add one signer
     client.add_signer(&split_id, &signer);
@@ -395,7 +459,7 @@ fn test_update_threshold() {
     let signer3 = Address::generate(&env);
 
     client.initialize(&admin);
-    client.create_multisig_split(&split_id, &2, &1800);
+    client.create_multisig_split(&admin, &split_id, &2, &1800);
 
     // Add three signers
     client.add_signer(&split_id, &signer1);
@@ -426,7 +490,7 @@ fn test_threshold_too_high() {
     let signer2 = Address::generate(&env);
 
     client.initialize(&admin);
-    client.create_multisig_split(&split_id, &2, &1800);
+    client.create_multisig_split(&admin, &split_id, &2, &1800);
 
     // Add two signers
     client.add_signer(&split_id, &signer1);
@@ -444,7 +508,7 @@ fn test_threshold_too_low() {
     let signer = Address::generate(&env);
 
     client.initialize(&admin);
-    client.create_multisig_split(&split_id, &1, &1800);
+    client.create_multisig_split(&admin, &split_id, &1, &1800);
 
     // Add one signer
     client.add_signer(&split_id, &signer);
@@ -462,7 +526,7 @@ fn test_is_signer() {
     let signer2 = Address::generate(&env);
 
     client.initialize(&admin);
-    client.create_multisig_split(&split_id, &2, &1800);
+    client.create_multisig_split(&admin, &split_id, &2, &1800);
 
     // Add one signer
     client.add_signer(&split_id, &signer1);
@@ -490,7 +554,7 @@ fn test_governance_info() {
     let signer3 = Address::generate(&env);
 
     client.initialize(&admin);
-    client.create_multisig_split(&split_id, &2, &1800);
+    client.create_multisig_split(&admin, &split_id, &2, &1800);
 
     // Initially empty
     let governance = client.get_governance_info(&split_id);
@@ -518,7 +582,7 @@ fn test_cannot_modify_executed_split() {
     let signer3 = Address::generate(&env);
 
     client.initialize(&admin);
-    client.create_multisig_split(&split_id, &3, &1800);
+    client.create_multisig_split(&admin, &split_id, &3, &1800);
 
     // Add signers and execute
     client.add_signer(&split_id, &signer1);
@@ -557,7 +621,7 @@ fn test_dynamic_governance_flow() {
     client.initialize(&admin);
 
     // Create split with 2-of-3 multisig
-    client.create_multisig_split(&split_id, &2, &1800);
+    client.create_multisig_split(&admin, &split_id, &2, &1800);
     client.add_signer(&split_id, &signer1);
     client.add_signer(&split_id, &signer2);
     client.add_signer(&split_id, &signer3);
@@ -668,7 +732,7 @@ mod proptests {
             env.ledger().set_timestamp(0);
 
             let split_id = String::from_str(&env, "split-prop");
-            client.create_multisig_split(&split_id, &required_sigs, &DEFAULT_TIME_LOCK);
+            client.create_multisig_split(&admin, &split_id, &required_sigs, &DEFAULT_TIME_LOCK);
 
             let mut model_status = MultisigStatus::Pending;
             let mut model_required = required_sigs;

@@ -1,4 +1,11 @@
+import { StrKey } from '@stellar/stellar-sdk';
 import type { WizardState } from '../../types/wizard';
+
+/** Returns true if the trimmed address is a syntactically valid Stellar Ed25519 public key. */
+export const isValidStellarAddress = (address: string): boolean => {
+    const trimmed = address.trim();
+    return trimmed.length > 0 && StrKey.isValidEd25519PublicKey(trimmed);
+};
 
 type Errors = Record<string, string>;
 
@@ -25,8 +32,19 @@ export const validateParticipants = (
     const hasUnnamed = value.participants.some((p) => !p.name.trim());
     if (hasUnnamed) errors.participants = t('wizard.validation.participantNameRequired');
 
-    const hasValidWallet = value.participants.some((p) => p.walletAddress && p.walletAddress.trim().length > 0);
-    if (!hasValidWallet) errors.participants = 'Add at least one participant with a valid wallet address';
+    // Check for non-empty but invalid wallet addresses (more specific error)
+    const hasInvalidWallet = value.participants.some(
+        (p) => p.walletAddress && p.walletAddress.trim().length > 0 && !StrKey.isValidEd25519PublicKey(p.walletAddress.trim())
+    );
+    if (hasInvalidWallet) {
+        errors.participants = t('wizard.validation.invalidWalletAddress');
+    } else {
+        // Then check if at least one valid wallet exists
+        const hasValidWallet = value.participants.some(
+            (p) => p.walletAddress && StrKey.isValidEd25519PublicKey(p.walletAddress.trim())
+        );
+        if (!hasValidWallet) errors.participants = 'Add at least one participant with a valid wallet address';
+    }
 
     if (value.splitMethod === 'percentage') {
         const total = value.participants.reduce((acc, p) => acc + (p.percentage ?? 0), 0);

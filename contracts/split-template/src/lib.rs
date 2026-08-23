@@ -118,13 +118,22 @@ impl SplitTemplateContract {
     /// * `env` - The Soroban environment
     /// * `template_id` - The ID of the template to apply
     /// * `split_id` - The ID of the split being created from this template
+    /// * `caller` - The address consuming a template use (must authorize)
     ///
     /// # Returns
     /// The applied `Template` (with updated `use_count`) or a structured error:
     /// * `Error::TemplateNotFound` — template does not exist
     /// * `Error::IncompatibleVersion` — template was created by an older/newer schema
     /// * `Error::TemplateLimitReached` — `max_uses` is set and already reached
-    pub fn apply_template(env: Env, template_id: String, split_id: u64) -> Result<Template, Error> {
+    pub fn apply_template(
+        env: Env,
+        caller: Address,
+        template_id: String,
+        split_id: u64,
+    ) -> Result<Template, Error> {
+        // The caller must explicitly authorize consumption of a template use.
+        caller.require_auth();
+
         // Load template; return structured error instead of panicking
         let mut template =
             storage::get_template(&env, &template_id).ok_or(Error::TemplateNotFound)?;
@@ -160,10 +169,19 @@ impl SplitTemplateContract {
     /// * `env` - The Soroban environment
     /// * `template_id` - The ID of the template used
     /// * `split_id` - The ID of the split created from the template
+    /// * `caller` - The address consuming a template use (must authorize)
     ///
     /// # Returns
     /// Success or error if template not found
-    pub fn use_template(env: Env, template_id: String, split_id: u64) -> Result<(), Error> {
+    pub fn use_template(
+        env: Env,
+        caller: Address,
+        template_id: String,
+        split_id: u64,
+    ) -> Result<(), Error> {
+        // The caller must explicitly authorize consumption of a template use.
+        caller.require_auth();
+
         // Load the template; fail if not found
         let mut template =
             storage::get_template(&env, &template_id).ok_or(Error::TemplateNotFound)?;

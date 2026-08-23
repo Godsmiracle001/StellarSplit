@@ -140,6 +140,11 @@
             "viewReports": "レポートを見る"
         }
     },
+    "wizard": {
+        "validation": {
+            "invalidWalletAddress": "このアドレスは有効なStellarアドレスに見えません。"
+        }
+    },
     "activityFeed": {
         "someone": "誰か",
         "splitCreated": "が{{title}}を作成",
