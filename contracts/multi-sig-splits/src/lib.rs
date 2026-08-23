@@ -44,13 +44,21 @@ impl MultisigSplitsContract {
     /// Create a new multi-signature split
     ///
     /// This function creates a new multi-sig split with the specified
-    /// signature threshold and time lock.
+    /// signature threshold and time lock. The `creator` must authenticate
+    /// this call, and is recorded as the split's creator/initiator so there
+    /// is an accountability trail for who created what, and so that
+    /// unauthenticated callers cannot squat on split IDs a legitimate user
+    /// is about to use.
     pub fn create_multisig_split(
         env: Env,
+        creator: Address,
         split_id: String,
         required_sigs: u32,
         time_lock: u64,
     ) -> Result<(), MultisigError> {
+        // Verify the creator is authorizing this call.
+        creator.require_auth();
+
         // Validate inputs
         if required_sigs == 0 {
             return Err(MultisigError::InvalidThreshold);
@@ -60,7 +68,8 @@ impl MultisigSplitsContract {
             return Err(MultisigError::InvalidThreshold);
         }
 
-        // Check if split already exists
+        // Check if split already exists. IDs are caller-supplied, so an
+        // existing split must never be silently overwritten.
         if storage::split_exists(&env, &split_id) {
             return Err(MultisigError::SplitAlreadyExists);
         }
@@ -68,6 +77,7 @@ impl MultisigSplitsContract {
         // Create the multi-sig split
         let split = MultisigSplit {
             split_id: split_id.clone(),
+            creator: creator.clone(),
             required_signatures: required_sigs,
             current_signatures: 0,
             time_lock,
@@ -82,7 +92,7 @@ impl MultisigSplitsContract {
         storage::save_split(&env, &split);
 
         // Emit creation event
-        events::emit_split_created(&env, &split_id, required_sigs, time_lock);
+        events::emit_split_created(&env, &split_id, &creator, required_sigs, time_lock);
 
         Ok(())
     }
@@ -422,5 +432,16 @@ impl MultisigSplitsContract {
             return false;
         }
         storage::is_signer(&env, &split_id, &potential_signer)
+    }
+
+    /// Get the address that created a split
+    ///
+    /// Returns the creator/initiator recorded when `create_multisig_split`
+    /// was called, providing an accountability trail for who created what.
+    pub fn get_creator(env: Env, split_id: String) -> Result<Address, MultisigError> {
+        if !storage::split_exists(&env, &split_id) {
+            return Err(MultisigError::SplitNotFound);
+        }
+        Ok(storage::get_creator(&env, &split_id))
     }
 }
