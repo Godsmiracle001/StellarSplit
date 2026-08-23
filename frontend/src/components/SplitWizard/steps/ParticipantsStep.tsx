@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { UserPlus, Trash2, Percent, Sliders } from 'lucide-react';
+import { isValidStellarAddress } from '../validators';
 import type { WizardParticipant, WizardState, SplitMethod } from '../../../types/wizard';
 
 interface ParticipantsStepProps {
@@ -26,6 +27,8 @@ const showExtraField = (method: SplitMethod) =>
 export const ParticipantsStep = ({ value, onChange, errors }: ParticipantsStepProps) => {
     const { t } = useTranslation();
     const [expanded, setExpanded] = useState<string | null>(null);
+    const [touchedWallets, setTouchedWallets] = useState<Set<string>>(new Set());
+    const [walletErrors, setWalletErrors] = useState<Record<string, string>>({});
 
     const updateParticipant = (id: string, patch: Partial<WizardParticipant>) => {
         onChange({
@@ -44,6 +47,16 @@ export const ParticipantsStep = ({ value, onChange, errors }: ParticipantsStepPr
     const removeParticipant = (id: string) => {
         onChange({ participants: value.participants.filter((p) => p.id !== id) });
         if (expanded === id) setExpanded(null);
+        setTouchedWallets((prev) => {
+            const next = new Set(prev);
+            next.delete(id);
+            return next;
+        });
+        setWalletErrors((prev) => {
+            const next = { ...prev };
+            delete next[id];
+            return next;
+        });
     };
 
     const totalPercentage = value.participants.reduce(
@@ -52,6 +65,41 @@ export const ParticipantsStep = ({ value, onChange, errors }: ParticipantsStepPr
     const totalCustom = value.participants.reduce(
         (acc, p) => acc + (p.customAmount ?? 0), 0
     );
+
+    const validateWallet = (id: string, address: string) => {
+        if (!address.trim()) {
+            setWalletErrors((prev) => {
+                const next = { ...prev };
+                delete next[id];
+                return next;
+            });
+            return;
+        }
+        if (!isValidStellarAddress(address)) {
+            setWalletErrors((prev) => ({
+                ...prev,
+                [id]: t('wizard.validation.invalidWalletAddress'),
+            }));
+        } else {
+            setWalletErrors((prev) => {
+                const next = { ...prev };
+                delete next[id];
+                return next;
+            });
+        }
+    };
+
+    const handleWalletBlur = (id: string, address: string) => {
+        setTouchedWallets((prev) => new Set([...prev, id]));
+        validateWallet(id, address);
+    };
+
+    const handleWalletChange = (id: string, address: string) => {
+        updateParticipant(id, { walletAddress: address });
+        if (touchedWallets.has(id)) {
+            validateWallet(id, address);
+        }
+    };
 
     return (
         <div className="space-y-6" role="group" aria-labelledby="participants-heading">
@@ -142,10 +190,22 @@ export const ParticipantsStep = ({ value, onChange, errors }: ParticipantsStepPr
                                         id={`participant-${p.id}-wallet`}
                                         type="text"
                                         value={p.walletAddress ?? ''}
-                                        onChange={(e) => updateParticipant(p.id, { walletAddress: e.target.value })}
+                                        onChange={(e) => handleWalletChange(p.id, e.target.value)}
+                                        onBlur={(e) => handleWalletBlur(p.id, e.target.value)}
                                         placeholder={t('wizard.participants.walletPlaceholder')}
-                                        className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-600 text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-purple-400 font-mono"
+                                        aria-invalid={touchedWallets.has(p.id) && !!walletErrors[p.id]}
+                                        aria-describedby={touchedWallets.has(p.id) && walletErrors[p.id] ? `wallet-${p.id}-error` : undefined}
+                                        className={`w-full px-3 py-2 rounded-lg border text-sm text-gray-900 dark:text-gray-100 placeholder-gray-400 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-purple-400 font-mono ${
+                                            touchedWallets.has(p.id) && walletErrors[p.id]
+                                                ? 'border-red-400 dark:border-red-500'
+                                                : 'border-gray-200 dark:border-gray-600'
+                                        }`}
                                     />
+                                    {touchedWallets.has(p.id) && walletErrors[p.id] && (
+                                        <p id={`wallet-${p.id}-error`} className="text-xs text-red-500" role="alert">
+                                            {walletErrors[p.id]}
+                                        </p>
+                                    )}
                                 </div>
                                 <div className="space-y-1">
                                     <label 
