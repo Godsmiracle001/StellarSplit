@@ -20,9 +20,13 @@ The contract enables secure handling of high-value splits by requiring multiple 
 
 Initializes the contract with an admin address. Must be called before any other operations.
 
-### `create_multisig_split(env: Env, split_id: String, required_sigs: u32, time_lock: u64) -> Result<(), MultisigError>`
+### `create_multisig_split(env: Env, creator: Address, split_id: String, required_sigs: u32, time_lock: u64) -> Result<(), MultisigError>`
 
-Creates a new multi-signature split with the specified parameters:
+Creates a new multi-signature split with the specified parameters. Requires
+authorization from `creator`, who is recorded as the split's creator/initiator.
+Since `split_id` is caller-supplied, creation against an existing ID is
+rejected (`SplitAlreadyExists`) rather than silently overwriting it:
+- `creator`: Address authorizing and initiating the split; recorded as its creator
 - `split_id`: Unique identifier for the split
 - `required_sigs`: Number of signatures required (minimum 1)
 - `time_lock`: Time delay in seconds before execution is allowed
@@ -50,6 +54,10 @@ Returns detailed information about a split including current status and signatur
 ### `can_execute_split(env: Env, split_id: String) -> bool`
 
 Checks if a split can be executed (all signatures collected and time lock expired).
+
+### `get_creator(env: Env, split_id: String) -> Result<Address, MultisigError>`
+
+Returns the address recorded as the split's creator/initiator.
 
 ## Split States
 
@@ -87,6 +95,8 @@ cargo test
 
 ## Security Considerations
 
+- `create_multisig_split` requires authorization from the `creator` address and records it, so every split has a verifiable, accountable owner
+- Since split IDs are caller-supplied, creating a split against an ID that already exists is rejected rather than silently overwritten
 - Only the admin can cancel splits or perform emergency overrides
 - Time locks prevent rushed executions
 - Duplicate signatures are prevented

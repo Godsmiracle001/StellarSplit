@@ -8,10 +8,22 @@ pub fn emit_initialized(env: &Env, admin: &Address) {
 }
 
 /// Emit multi-sig split created event
-pub fn emit_split_created(env: &Env, split_id: &String, required_sigs: u32, time_lock: u64) {
+pub fn emit_split_created(
+    env: &Env,
+    split_id: &String,
+    creator: &Address,
+    required_sigs: u32,
+    time_lock: u64,
+) {
     env.events().publish(
-        ("split_created", "split_id", "required_sigs", "time_lock"),
-        (split_id.clone(), required_sigs, time_lock),
+        (
+            "split_created",
+            "split_id",
+            "creator",
+            "required_sigs",
+            "time_lock",
+        ),
+        (split_id.clone(), creator.clone(), required_sigs, time_lock),
     );
 }
 

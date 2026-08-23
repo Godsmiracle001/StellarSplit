@@ -125,6 +125,11 @@ pub fn save_split(env: &Env, split: &MultisigSplit) {
     env.storage().persistent().set(&split.split_id, split);
 }
 
+/// Get the creator/initiator recorded for a multi-sig split
+pub fn get_creator(env: &Env, split_id: &String) -> Address {
+    get_split(env, split_id).creator
+}
+
 /// Check if an address has signed a split
 pub fn has_signed(env: &Env, split_id: &String, signer: &Address) -> bool {
     env.storage()
