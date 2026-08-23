@@ -140,6 +140,11 @@
             "viewReports": "查看报表"
         }
     },
+    "wizard": {
+        "validation": {
+            "invalidWalletAddress": "此地址看起来不是有效的 Stellar 地址。"
+        }
+    },
     "activityFeed": {
         "someone": "某人",
         "splitCreated": "创建了 {{title}}",

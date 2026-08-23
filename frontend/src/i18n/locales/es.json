@@ -140,6 +140,11 @@
             "viewReports": "Ver informes"
         }
     },
+    "wizard": {
+        "validation": {
+            "invalidWalletAddress": "Esta dirección no parece ser una dirección Stellar válida."
+        }
+    },
     "activityFeed": {
         "someone": "Alguien",
         "splitCreated": "creó {{title}}",
