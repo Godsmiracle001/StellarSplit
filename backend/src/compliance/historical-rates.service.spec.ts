@@ -274,4 +274,33 @@ describe('HistoricalRatesService', () => {
       expect(mockedAxios.get).not.toHaveBeenCalled();
     });
   });
+
+  describe('getXlmPricesForDates', () => {
+    it('deduplicates dates and fetches each unique date only once', async () => {
+      mockedAxios.get.mockResolvedValue(priceResponse(0.5));
+
+      const date1 = new Date('2026-03-29T10:00:00.000Z');
+      const date2 = new Date('2026-03-29T20:00:00.000Z');
+
+      const rates = await service.getXlmPricesForDates([date1, date2], 'USD');
+
+      expect(rates.get('2026-03-29')).toBe(0.5);
+      expect(mockedAxios.get).toHaveBeenCalledTimes(1);
+    });
+
+    it('caps concurrency and handles partial failures gracefully', async () => {
+      const date1 = new Date('2026-03-29T12:00:00.000Z');
+      const date2 = new Date('2026-03-30T12:00:00.000Z');
+
+      mockedAxios.get
+        .mockResolvedValueOnce(priceResponse(0.5))
+        .mockRejectedValueOnce(axiosError(404));
+
+      const rates = await service.getXlmPricesForDates([date1, date2], 'USD');
+
+      expect(rates.get('2026-03-29')).toBe(0.5);
+      expect(rates.get('2026-03-30')).toBeNull();
+      expect(mockedAxios.get).toHaveBeenCalledTimes(2);
+    });
+  });
 });

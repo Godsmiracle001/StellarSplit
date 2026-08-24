@@ -199,7 +199,91 @@ export class HistoricalRatesService {
   }
 
   /** `YYYY-MM-DD` in UTC, matching the entity's `date` column. */
-  private toDateString(date: Date): string {
+  toDateString(date: Date): string {
     return date.toISOString().split('T')[0];
   }
+
+  /**
+   * Fetches historical rates for a batch of dates.
+   * Deduplicates lookups, limits concurrency to avoid rate limits,
+   * and handles failures gracefully by returning null for failed dates.
+   */
+  async getXlmPricesForDates(
+    dates: Date[],
+    currency: string = 'usd',
+  ): Promise<Map<string, number | null>> {
+    const normalizedCurrency = currency.toLowerCase();
+
+    // Group and deduplicate by date string
+    const dateMap = new Map<string, Date>();
+    for (const date of dates) {
+      const dateStr = this.toDateString(date);
+      if (!dateMap.has(dateStr)) {
+        dateMap.set(dateStr, date);
+      }
+    }
+
+    const uniqueDateStrs = Array.from(dateMap.keys());
+    const result = new Map<string, number | null>();
+
+    // Limit concurrency to 2 to stay well under rate limits
+    const limit = pLimit(2);
+
+    const promises = uniqueDateStrs.map((dateStr) => {
+      return limit(async () => {
+        try {
+          const dateObj = dateMap.get(dateStr)!;
+          const price = await this.getXlmPrice(dateObj, normalizedCurrency);
+          result.set(dateStr, price);
+        } catch (error) {
+          this.logger.warn(
+            `Failed to fetch historical rate for date ${dateStr} during batch export: ${
+              error instanceof Error ? error.message : String(error)
+            }`,
+          );
+          result.set(dateStr, null);
+        }
+      });
+    });
+
+    await Promise.all(promises);
+    return result;
+  }
+}
+
+/**
+ * A simple concurrency limiter helper.
+ */
+function pLimit(concurrency: number) {
+  const queue: (() => void)[] = [];
+  let activeCount = 0;
+
+  const next = () => {
+    activeCount--;
+    if (queue.length > 0) {
+      queue.shift()!();
+    }
+  };
+
+  return <T>(fn: () => Promise<T>): Promise<T> => {
+    return new Promise<T>((resolve, reject) => {
+      const run = async () => {
+        activeCount++;
+        try {
+          const result = await fn();
+          resolve(result);
+        } catch (error) {
+          reject(error);
+        } finally {
+          next();
+        }
+      };
+
+      if (activeCount < concurrency) {
+        run();
+      } else {
+        queue.push(run);
+      }
+    });
+  };
 }
