@@ -1,15 +1,9 @@
 #![cfg(test)]
 use super::*;
 use soroban_sdk::{
-    contract,
-    contracterror,
-    contractimpl,
-    contracttype,
+    contract, contracterror, contractimpl, contracttype,
     testutils::{Address as _, Ledger as _, LedgerInfo},
-    Address,
-    Env,
-    String,
-    Vec,
+    Address, Env, Vec,
 };
 
 #[contract]
@@ -121,8 +115,12 @@ fn test_reminder_escrow_ttl_is_extended_on_write() {
     });
 
     let contract_id = env.register_contract(None, ReminderContract);
-    let split_id = String::from_str(&env, "ttl_split");
+    let split_contract_id = env.register_contract(None, MockSplitEscrowContract);
+
+    let split_id = 123u64;
+    let creator = Address::generate(&env);
     let participant = Address::generate(&env);
+
     let mut participants = Vec::new(&env);
     participants.push_back(EscrowParticipant {
         address: participant.clone(),
@@ -133,9 +131,12 @@ fn test_reminder_escrow_ttl_is_extended_on_write() {
     });
 
     let escrow = ReminderEscrow {
-        split_id: split_id.clone(),
+        creator,
+        split_escrow_contract: split_contract_id,
+        split_id,
         participants,
     };
+
     env.as_contract(&contract_id, || {
         env.storage().instance().extend_ttl(10, 1_000_000);
         storage::set_escrow(&env, &split_id, &escrow);
@@ -146,6 +147,7 @@ fn test_reminder_escrow_ttl_is_extended_on_write() {
     let stored_escrow = env.as_contract(&contract_id, || {
         storage::get_escrow(&env, &split_id).expect("Escrow expired")
     });
+
     assert!(
         !stored_escrow
             .participants
