@@ -35,12 +35,59 @@ const MIN_COMPLETION_RATE: u32 = 80;
 /// evidence, for preview) and from `mint_badge_with_evidence` (on-chain
 /// verified evidence only).
 pub fn evaluate_eligibility(env: &Env, evidence: &BadgeEvidence) -> EligibilityResult {
-    // Gate on completion rate first
+    // Gate on valid completion rate percentage
+    if evidence.completion_rate > 100 {
+        return EligibilityResult {
+            is_eligible: false,
+            tier: Symbol::new(env, "none"),
+            reason: Symbol::new(env, "invalid_rate"),
+        };
+    }
+
+    // Gate on completion rate threshold
     if evidence.completion_rate < MIN_COMPLETION_RATE {
         return EligibilityResult {
             is_eligible: false,
             tier: Symbol::new(env, "none"),
             reason: Symbol::new(env, "low_completion"),
+        };
+    }
+
+    // Cross-check mathematical consistency of completion_rate with participant_count
+    if evidence.participant_count > 0 {
+        let completion_rate_u64 = evidence.completion_rate as u64;
+        let participant_count_u64 = evidence.participant_count as u64;
+        
+        let completed_count = ((completion_rate_u64 * participant_count_u64 + 50) / 100) as u32;
+        if completed_count > evidence.participant_count {
+            return EligibilityResult {
+                is_eligible: false,
+                tier: Symbol::new(env, "none"),
+                reason: Symbol::new(env, "inconsistent_rate"),
+            };
+        }
+
+        let reconstructed_rate = (((completed_count as u64) * 100) / participant_count_u64) as u32;
+        let diff = if evidence.completion_rate >= reconstructed_rate {
+            evidence.completion_rate - reconstructed_rate
+        } else {
+            reconstructed_rate - evidence.completion_rate
+        };
+
+        // Allow a small tolerance of 2% due to rounding/truncation in integer percentage arithmetic
+        if diff > 2 {
+            return EligibilityResult {
+                is_eligible: false,
+                tier: Symbol::new(env, "none"),
+                reason: Symbol::new(env, "inconsistent_rate"),
+            };
+        }
+    } else if evidence.completion_rate > 0 {
+        // If participant_count is 0, completion_rate must be 0
+        return EligibilityResult {
+            is_eligible: false,
+            tier: Symbol::new(env, "none"),
+            reason: Symbol::new(env, "inconsistent_rate"),
         };
     }
 
