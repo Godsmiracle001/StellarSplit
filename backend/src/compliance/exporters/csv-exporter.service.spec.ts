@@ -1,6 +1,5 @@
 import { CSVExporterService } from './csv-exporter.service';
 import { HistoricalRatesService } from '../historical-rates.service';
-import { Split } from '../../entities/split.entity';
 
 describe('CSVExporterService', () => {
     let service: CSVExporterService;

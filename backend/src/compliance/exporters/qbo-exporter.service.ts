@@ -23,7 +23,6 @@ export class QBOExporterService {
                 const fiatAmount = Number(split.totalAmount) * rate;
                 amountStr = (-fiatAmount).toFixed(2);
             } else {
-                amountStr = '';
                 description = `${description} (rate unavailable)`;
             }
 
