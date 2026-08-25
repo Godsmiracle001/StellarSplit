@@ -1,14 +1,8 @@
 #![cfg(test)]
 extern crate std;
 
-use crate::{
-    AchievementBadgesContract, AchievementBadgesContractClient, BadgeEvidence,
-    BadgeType,
-};
-use soroban_sdk::{
-    testutils::Address as _,
-    Address, Env, String, Symbol,
-};
+use crate::{AchievementBadgesContract, AchievementBadgesContractClient, BadgeEvidence, BadgeType};
+use soroban_sdk::{testutils::Address as _, Address, Env, String, Symbol};
 
 mod mock_escrow {
     use soroban_sdk::{contract, contractimpl, Env, String};
@@ -28,7 +22,13 @@ mod mock_escrow {
     }
 }
 
-fn setup_test() -> (Env, Address, Address, Address, AchievementBadgesContractClient<'static>) {
+fn setup_test() -> (
+    Env,
+    Address,
+    Address,
+    Address,
+    AchievementBadgesContractClient<'static>,
+) {
     let env = Env::default();
     env.mock_all_auths();
 
@@ -75,14 +75,17 @@ fn test_legitimate_mint_succeeds() {
     let evidence = BadgeEvidence {
         escrow_id: String::from_str(&env, "escrow-001"),
         total_split_amount: 1_000_000_000, // Client claims Silver
-        participant_count: 5,               // Client claims Silver
+        participant_count: 5,              // Client claims Silver
         completion_rate: 80,               // meets MIN_COMPLETION_RATE
     };
 
     let badge = client.mint_badge_with_evidence(&user, &evidence);
     assert_eq!(badge.recipient, user);
     assert_eq!(badge.tier, Symbol::new(&env, "silver"));
-    assert_eq!(badge.evidence_escrow_id, String::from_str(&env, "escrow-001"));
+    assert_eq!(
+        badge.evidence_escrow_id,
+        String::from_str(&env, "escrow-001")
+    );
 
     assert!(client.has_badge(&user, &String::from_str(&env, "escrow-001")));
 }
@@ -111,7 +114,10 @@ fn test_metadata_queries() {
     assert_eq!(metadata.name, String::from_str(&env, "First Split Creator"));
 
     let metadata_standard = client.badge_metadata_standard(&BadgeType::BigSpender);
-    assert_eq!(metadata_standard.name, String::from_str(&env, "Big Spender"));
+    assert_eq!(
+        metadata_standard.name,
+        String::from_str(&env, "Big Spender")
+    );
 }
 
 #[test]
@@ -221,7 +227,7 @@ fn test_inconsistent_completion_rate_rejected() {
         escrow_id: String::from_str(&env, "escrow-001"),
         total_split_amount: 1_000_000_000,
         participant_count: 5,
-        completion_rate: 85, 
+        completion_rate: 85,
     };
 
     let result = client.check_eligibility_with_evidence(&user, &evidence);

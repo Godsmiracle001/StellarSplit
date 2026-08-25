@@ -57,7 +57,7 @@ pub fn evaluate_eligibility(env: &Env, evidence: &BadgeEvidence) -> EligibilityR
     if evidence.participant_count > 0 {
         let completion_rate_u64 = evidence.completion_rate as u64;
         let participant_count_u64 = evidence.participant_count as u64;
-        
+
         let completed_count = ((completion_rate_u64 * participant_count_u64 + 50) / 100) as u32;
         if completed_count > evidence.participant_count {
             return EligibilityResult {
