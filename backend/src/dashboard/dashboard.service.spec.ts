@@ -13,7 +13,6 @@ jest.mock('ioredis');
 
 describe('DashboardService Caching', () => {
   let service: DashboardService;
-  let configService: ConfigService;
   let participantRepo: Repository<Participant>;
   let splitRepo: Repository<Split>;
   let activityRepo: Repository<Activity>;
@@ -88,7 +87,6 @@ describe('DashboardService Caching', () => {
     }).compile();
 
     service = module.get<DashboardService>(DashboardService);
-    configService = module.get<ConfigService>(ConfigService);
     participantRepo = module.get<Repository<Participant>>(getRepositoryToken(Participant));
     splitRepo = module.get<Repository<Split>>(getRepositoryToken(Split));
     activityRepo = module.get<Repository<Activity>>(getRepositoryToken(Activity));
