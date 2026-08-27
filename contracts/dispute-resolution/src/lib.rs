@@ -232,4 +232,9 @@ impl DisputeContract {
     pub fn get_all_disputes(env: Env) -> soroban_sdk::Vec<String> {
         storage::get_list(&env)
     }
+
+    /// Get the escrow contract address trusted for dispute settlement actions.
+    pub fn get_trusted_escrow_contract(env: Env) -> Result<Address, Error> {
+        storage::get_trusted_escrow_contract(&env).ok_or(Error::NotFound)
+    }
 }
