@@ -74,9 +74,12 @@ pub fn set_trusted_escrow_contract(env: &Env, escrow_contract: &Address) {
         .set(&DataKey::TrustedEscrowContract, escrow_contract);
 }
 
-pub fn is_trusted_escrow_contract(env: &Env, escrow_contract: &Address) -> bool {
+pub fn get_trusted_escrow_contract(env: &Env) -> Option<Address> {
     env.storage()
         .instance()
-        .get::<_, Address>(&DataKey::TrustedEscrowContract)
-        .is_some_and(|trusted| trusted == *escrow_contract)
+        .get(&DataKey::TrustedEscrowContract)
+}
+
+pub fn is_trusted_escrow_contract(env: &Env, escrow_contract: &Address) -> bool {
+    get_trusted_escrow_contract(env).is_some_and(|trusted| trusted == *escrow_contract)
 }

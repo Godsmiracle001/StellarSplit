@@ -112,6 +112,24 @@ impl FailingEscrowContract {
 }
 
 #[test]
+fn test_initialize_records_trusted_escrow_contract() {
+    let (
+        _env,
+        client,
+        _escrow,
+        escrow_contract,
+        _token_client,
+        _creator,
+        _participant,
+        _treasury,
+        _escrow_split_id,
+        _admin,
+    ) = setup();
+
+    assert_eq!(client.get_trusted_escrow_contract(), escrow_contract);
+}
+
+#[test]
 fn test_raise_dispute_records_voting_state() {
     let (
         env,
