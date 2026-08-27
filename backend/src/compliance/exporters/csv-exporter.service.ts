@@ -8,22 +8,28 @@ export class CSVExporterService {
 
     async generate(splits: Split[]): Promise<string> {
         const headers = ['Date', 'Description', 'Category', 'XLM Amount', 'Fiat Amount (USD)', 'Tax Deductible'];
-        const rows = await Promise.all(
-            splits.map(async (split) => {
-                const fiatAmount = await this.ratesService.convertXlmToFiat(
-                    Number(split.totalAmount),
-                    split.createdAt,
-                );
-                return [
-                    split.createdAt.toISOString().split('T')[0],
-                    `"${split.description || ''}"`,
-                    split.category?.name || 'Uncategorized',
-                    split.totalAmount,
-                    fiatAmount.toFixed(2),
-                    split.category?.taxDeductible ? 'Yes' : 'No',
-                ].join(',');
-            }),
-        );
+        const dates = splits.map((s) => s.createdAt);
+        const ratesMap = await this.ratesService.getXlmPricesForDates(dates);
+
+        const rows = splits.map((split) => {
+            const dateStr = this.ratesService.toDateString(split.createdAt);
+            const rate = ratesMap.get(dateStr);
+
+            let fiatAmountStr = 'rate unavailable';
+            if (rate !== null && rate !== undefined) {
+                const fiatAmount = Number(split.totalAmount) * rate;
+                fiatAmountStr = fiatAmount.toFixed(2);
+            }
+
+            return [
+                dateStr,
+                `"${split.description || ''}"`,
+                split.category?.name || 'Uncategorized',
+                split.totalAmount,
+                fiatAmountStr,
+                split.category?.taxDeductible ? 'Yes' : 'No',
+            ].join(',');
+        });
 
         return [headers.join(','), ...rows].join('\n');
     }
