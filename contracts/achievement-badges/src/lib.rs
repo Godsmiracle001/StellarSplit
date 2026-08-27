@@ -10,6 +10,9 @@ mod metadata;
 mod storage;
 mod types;
 
+#[cfg(test)]
+mod test;
+
 pub use eligibility::EligibilityResult;
 pub use metadata::{BadgeOwnershipInfo, UserBadgeCollection};
 pub use types::{BadgeMetadata, BadgeType, UserBadge};
